@@ -6,9 +6,42 @@ const {
   getReservationByCode, STATUS_BADGE, getSettings,
 } = require('../helpers');
 const mailer = require('../mailer');
+const { rateLimit } = require('../ratelimit');
 
 const router = express.Router();
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// ---------- spam / abuse protection ----------
+const reserveLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 5,
+  onLimit: (req, res) => {
+    const s = getSettings();
+    res.status(429).render('reserve', {
+      settings: s,
+      today: todayStr(),
+      maxDate: addDays(todayStr(), Number(s.booking_window_days || 60)),
+      error: 'Too many requests. Please wait a few minutes and try again.',
+      form: {},
+    });
+  },
+});
+
+const cancelLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 10,
+  onLimit: (req, res) => {
+    res.status(429).type('text/plain').send('Too many requests. Please wait a few minutes and try again.');
+  },
+});
+
+const bookingLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 30,
+  onLimit: (req, res) => {
+    res.status(429).type('text/plain').send('Too many requests. Please wait a few minutes and try again.');
+  },
+});
 
 // ---------- landing ----------
 router.get('/', (req, res) => {
@@ -41,10 +74,17 @@ router.get('/api/sessions', (req, res) => {
   res.json(sessionsForDate(date));
 });
 
-router.post('/reserve', async (req, res) => {
+router.post('/reserve', reserveLimiter, async (req, res) => {
   const s = getSettings();
   const maxParty = Number(s.max_party_size || 6);
   const b = req.body || {};
+
+  // Honeypot: hidden "website" field only a bot would fill in. Pretend success —
+  // no DB write, no email — so the bot doesn't learn to look for a real signal.
+  if (String(b.website || '').trim() !== '') {
+    return res.redirect('/booking?new=1');
+  }
+
   const form = {
     date: String(b.date || '').trim(),
     slot_id: Number(b.slot_id || 0),
@@ -77,6 +117,12 @@ router.post('/reserve', async (req, res) => {
     return fail(`Party size must be between 1 and ${maxParty}. Groups of 20–60 should book by email instead.`);
   if (!form.agree) return fail('Please agree to the privacy notice and no-show policy.');
 
+  const upcomingCount = db.prepare(
+    `SELECT COUNT(*) AS c FROM reservations WHERE email = ? AND status IN ('pending','confirmed') AND visit_date >= ?`
+  ).get(form.email, todayStr()).c;
+  if (upcomingCount >= 3)
+    return fail('You already have 3 upcoming reservations. Please cancel one via My Booking, or contact us by email.');
+
   const dup = db.prepare(
     `SELECT id FROM reservations WHERE email = ? AND visit_date = ? AND slot_id = ? AND status IN ('pending','confirmed')`
   ).get(form.email, form.date, form.slot_id);
@@ -101,7 +147,7 @@ router.post('/reserve', async (req, res) => {
 });
 
 // ---------- booking status / cancel ----------
-router.get('/booking', (req, res) => {
+router.get('/booking', bookingLimiter, (req, res) => {
   const code = String(req.query.code || '').trim().toUpperCase();
   const email = String(req.query.email || '').trim().toLowerCase();
   let reservation = null;
@@ -118,7 +164,7 @@ router.get('/booking', (req, res) => {
   });
 });
 
-router.post('/booking/cancel', async (req, res) => {
+router.post('/booking/cancel', cancelLimiter, async (req, res) => {
   const code = String(req.body.code || '').trim().toUpperCase();
   const email = String(req.body.email || '').trim().toLowerCase();
   const r = getReservationByCode(code);

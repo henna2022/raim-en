@@ -9,6 +9,10 @@ require('./maintenance').start(); // personal-data retention purge
 const app = express();
 const PORT = Number(process.env.PORT || 4310);
 
+// Only trust the reverse proxy's X-Forwarded-For header when explicitly deployed
+// behind one — otherwise req.ip would be spoofable by any client.
+if (process.env.TRUST_PROXY === '1') app.set('trust proxy', 1);
+
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '..', 'views'));
 app.disable('x-powered-by');

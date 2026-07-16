@@ -246,6 +246,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .checkline { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; color: var(--ink-soft); margin-top: 18px; }
 .checkline input { margin-top: 3px; }
 .error-box { background: var(--red-soft); color: var(--red-ink); border-radius: 12px; padding: 13px 16px; margin-bottom: 18px; font-size: 14.5px; font-weight: 600; }
+.hp-field { position: absolute; left: -9999px; opacity: 0; height: 0; overflow: hidden; }
 .side-card { background: var(--gray-card); border-radius: var(--radius); padding: 22px 24px; margin-bottom: 14px; font-size: 14px; color: var(--ink-soft); }
 .side-card h3 { margin: 0 0 8px; font-size: 15px; color: var(--ink); letter-spacing: -.2px; }
 .side-card ol { margin: 0; padding-left: 18px; }
