@@ -2,7 +2,7 @@
 const express = require('express');
 const { db } = require('../db');
 const {
-  DATE_RE, todayStr, addDays, closureInfo, sessionsForDate, genCode,
+  isValidDateStr, todayStr, addDays, closureInfo, sessionsForDate, genCode,
   getReservationByCode, STATUS_BADGE, getSettings,
 } = require('../helpers');
 const mailer = require('../mailer');
@@ -65,7 +65,7 @@ router.get('/reserve', (req, res) => {
 
 router.get('/api/sessions', (req, res) => {
   const date = String(req.query.date || '');
-  if (!DATE_RE.test(date)) return res.status(400).json({ error: 'Invalid date' });
+  if (!isValidDateStr(date)) return res.status(400).json({ error: 'Invalid date' });
   const s = getSettings();
   const max = addDays(todayStr(), Number(s.booking_window_days || 60));
   if (date < todayStr() || date > max) {
@@ -102,7 +102,7 @@ router.post('/reserve', reserveLimiter, async (req, res) => {
     error: msg, form,
   });
 
-  if (!DATE_RE.test(form.date)) return fail('Please pick a valid date.');
+  if (!isValidDateStr(form.date)) return fail('Please pick a valid date.');
   if (form.date < todayStr() || form.date > addDays(todayStr(), Number(s.booking_window_days || 60)))
     return fail('That date is outside the booking window.');
   const { closed } = closureInfo(form.date);

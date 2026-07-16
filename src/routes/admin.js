@@ -2,7 +2,7 @@
 const express = require('express');
 const { db, hashPassword, verifyPassword, setSetting } = require('../db');
 const {
-  DATE_RE, todayStr, closureInfo, getReservation, STATUS_BADGE, getSettings,
+  DATE_RE, isValidDateStr, todayStr, closureInfo, getReservation, STATUS_BADGE, getSettings,
 } = require('../helpers');
 const mailer = require('../mailer');
 const { rateLimit } = require('../ratelimit');
@@ -283,7 +283,7 @@ router.post('/schedule/closures', (req, res) => {
   const date = String(req.body.date || '').trim();
   const kind = req.body.kind === 'open' ? 'open' : 'closed';
   const reason = String(req.body.reason || '').trim().slice(0, 200);
-  if (!DATE_RE.test(date)) return res.redirect('/admin/schedule?error=' + encodeURIComponent('Pick a valid date.'));
+  if (!isValidDateStr(date)) return res.redirect('/admin/schedule?error=' + encodeURIComponent('Pick a valid date.'));
   db.prepare(`INSERT INTO closures (date, kind, reason) VALUES (?,?,?)
               ON CONFLICT(date) DO UPDATE SET kind=excluded.kind, reason=excluded.reason`).run(date, kind, reason);
   res.redirect('/admin/schedule?saved=1');

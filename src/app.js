@@ -59,7 +59,10 @@ app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
   res.status(500).send('Internal server error');
 });
 
-app.listen(PORT, () => {
-  console.log(`Seoul RAIM (EN) running at http://localhost:${PORT}`);
-  console.log(`Admin: http://localhost:${PORT}/admin (initial account: admin / raim2026!)`);
-});
+module.exports = app;
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Seoul RAIM (EN) running at http://localhost:${PORT}`);
+    console.log(`Admin: http://localhost:${PORT}/admin (initial account: admin / raim2026!)`);
+  });
+}
