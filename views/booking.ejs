@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Booking — Seoul Robot &amp; AI Museum</title>
+  <link rel="stylesheet" href="/css/site.css">
+</head>
+<body>
+<%- include('partials/nav') %>
+
+<div class="page-head">
+  <div class="wrap">
+    <h1>My Booking</h1>
+    <p>Check the status of your reservation request, or cancel if your plans change.</p>
+  </div>
+</div>
+
+<div class="wrap status-card">
+  <% if (isNew) { %>
+    <div class="status-banner st-confirmed">Your request was submitted. A “request received” email is on its way —
+    staff will review it and confirm by email.</div>
+  <% } %>
+  <% if (cancelled) { %>
+    <div class="status-banner st-cancelled">Your reservation has been cancelled. Thank you for letting us know.</div>
+  <% } %>
+
+  <div class="panel">
+    <h2 style="font-size:18px;margin:0 0 14px;">Find my booking</h2>
+    <form method="GET" action="/booking">
+      <label class="field" for="code">Reservation code</label>
+      <input type="text" id="code" name="code" placeholder="RAIM-XXXXXX" value="<%= code %>" required>
+      <label class="field" for="email">Email used for the booking</label>
+      <input type="email" id="email" name="email" value="<%= email %>" required>
+      <button class="btn btn-primary" type="submit" style="margin-top:16px;">Check status</button>
+    </form>
+    <% if (error) { %><div class="error-box" style="margin-top:16px;"><%= error %></div><% } %>
+  </div>
+
+  <% if (reservation) { const r = reservation; const [label] = STATUS_BADGE[r.status]; %>
+    <div class="panel" style="margin-top:16px;">
+      <div class="status-banner st-<%= r.status %>">
+        Status: <%= label %>
+        <% if (r.status === 'pending') { %> — staff are reviewing your request; you'll get an email once it's decided.<% } %>
+        <% if (r.status === 'confirmed') { %> — see you at the museum!<% } %>
+        <% if (r.status === 'declined') { %><%= r.decline_reason ? ' — ' + r.decline_reason : '' %><% } %>
+      </div>
+      <table class="kv">
+        <tr><td>Code</td><td class="code-big"><%= r.code %></td></tr>
+        <tr><td>Tour</td><td>
+          <%= r.tour_type === 'permanent' ? 'Permanent Exhibition Tour' : 'Special Exhibition Tour' %>
+          <% if (r.language === 'en') { %><span class="badge english">ENGLISH</span><% } else { %><span class="badge korean">KOREAN</span><% } %>
+        </td></tr>
+        <tr><td>Date &amp; time</td><td><%= r.visit_date %>, <%= r.start_time %>–<%= r.end_time %></td></tr>
+        <tr><td>Name</td><td><%= r.name %></td></tr>
+        <tr><td>Party size</td><td><%= r.party_size %></td></tr>
+      </table>
+      <% if (['pending','confirmed'].includes(r.status)) { %>
+        <form method="POST" action="/booking/cancel" style="margin-top:20px;"
+              onsubmit="return confirm('Cancel this reservation?');">
+          <input type="hidden" name="code" value="<%= r.code %>">
+          <input type="hidden" name="email" value="<%= r.email %>">
+          <button class="btn btn-danger" type="submit">Cancel this reservation</button>
+        </form>
+      <% } %>
+      <% if (r.status === 'confirmed') { %>
+        <p style="font-size:13px;color:#8a93a8;margin-top:14px;">On the day, arrive 10 minutes early and show this
+        code at the 1F information desk.</p>
+      <% } %>
+      <% if (r.status === 'declined') { %>
+        <p style="margin-top:14px;"><a class="btn btn-outline" href="/reserve">Try another date or session →</a></p>
+      <% } %>
+    </div>
+  <% } %>
+</div>
+
+<%- include('partials/foot') %>
+</body>
+</html>

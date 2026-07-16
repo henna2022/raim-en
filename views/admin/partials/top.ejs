@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %> — RAIM Admin</title>
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+<div class="topbar">
+  <span class="brand">RAIM ADMIN</span>
+  <nav>
+    <a href="/admin" class="<%= active === 'dashboard' ? 'on' : '' %>">Dashboard</a>
+    <a href="/admin/reservations" class="<%= active === 'reservations' ? 'on' : '' %>">Reservations</a>
+    <a href="/admin/schedule" class="<%= active === 'schedule' ? 'on' : '' %>">Schedule</a>
+    <a href="/admin/notices" class="<%= active === 'notices' ? 'on' : '' %>">Notices</a>
+    <a href="/admin/emails" class="<%= active === 'emails' ? 'on' : '' %>">Emails</a>
+    <% if (staff && staff.role === 'admin') { %>
+      <a href="/admin/staff" class="<%= active === 'staff' ? 'on' : '' %>">Staff</a>
+      <a href="/admin/settings" class="<%= active === 'settings' ? 'on' : '' %>">Settings</a>
+    <% } %>
+  </nav>
+  <span class="who">
+    <%= staff ? staff.name + ' (' + staff.role + ')' : '' %>
+    <form method="POST" action="/admin/logout" style="display:inline;"><button class="linky" type="submit">Log out</button></form>
+  </span>
+</div>
+<div class="wrap">

@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Book a Guided Tour — Seoul Robot &amp; AI Museum</title>
+  <link rel="stylesheet" href="/css/site.css">
+</head>
+<body>
+<%- include('partials/nav') %>
+
+<div class="page-head">
+  <div class="wrap">
+    <h1>Book a Guided Tour</h1>
+    <p>Free of charge. Pick a date and session, leave your name and email, and our staff will
+    confirm your seats by email — no Korean phone number required.</p>
+  </div>
+</div>
+
+<div class="wrap reserve-layout">
+  <form class="panel" method="POST" action="/reserve" id="reserveForm">
+    <% if (error) { %><div class="error-box"><%= error %></div><% } %>
+
+    <h2><span class="stepnum">1</span> Choose a date</h2>
+    <label class="field" for="date">Visit date</label>
+    <input type="date" id="date" name="date" required
+           min="<%= today %>" max="<%= maxDate %>" value="<%= form.date || '' %>">
+    <p class="form-hint">
+      Bookings open up to <%= settings.booking_window_days %> days ahead. The museum is closed on Mondays.</p>
+
+    <h2 style="margin-top:26px;"><span class="stepnum">2</span> Choose a session</h2>
+    <div id="sessionArea">
+      <div class="day-msg" id="dayMsg">Pick a date above to see available sessions.</div>
+      <div class="sessions" id="sessionList"></div>
+    </div>
+
+    <h2 style="margin-top:26px;"><span class="stepnum">3</span> Your details</h2>
+    <label class="field" for="name">Full name</label>
+    <input type="text" id="name" name="name" required maxlength="80" value="<%= form.name || '' %>" placeholder="e.g. Maria Gonzalez">
+    <label class="field" for="email">Email address</label>
+    <input type="email" id="email" name="email" required maxlength="120" value="<%= form.email || '' %>" placeholder="Your confirmation will be sent here">
+    <div class="grid cols-2" style="gap:12px;">
+      <div>
+        <label class="field" for="party_size">Party size</label>
+        <input type="number" id="party_size" name="party_size" required min="1" max="<%= settings.max_party_size %>" value="<%= form.party_size || 2 %>">
+      </div>
+      <div>
+        <label class="field" for="country">Country <span class="opt">(optional)</span></label>
+        <input type="text" id="country" name="country" maxlength="60" value="<%= form.country || '' %>" placeholder="Helps us prepare">
+      </div>
+    </div>
+    <label class="field" for="notes">Anything we should know? <span class="opt">(optional)</span></label>
+    <textarea id="notes" name="notes" rows="2" maxlength="500" placeholder="Accessibility needs, questions…"><%= form.notes || '' %></textarea>
+
+    <div class="checkline">
+      <input type="checkbox" id="agree" name="agree" required <%= form.agree ? 'checked' : '' %>>
+      <label for="agree">I agree that my name and email are used to manage this reservation only,
+      and I understand the <strong>no-show policy</strong>: if I can't come, I will cancel via the My Booking page —
+      repeated no-shows may lead to future requests being declined.</label>
+    </div>
+
+    <button class="btn btn-primary" type="submit" style="margin-top:20px;width:100%;">Submit reservation request</button>
+    <p class="form-hint" style="text-align:center;margin-top:10px;">
+      You'll receive a “request received” email right away, and a confirmation email once staff verify seat availability.</p>
+  </form>
+
+  <aside>
+    <div class="side-card">
+      <h3>How it works</h3>
+      <ol>
+        <li>Submit your request (takes 1 minute).</li>
+        <li>Museum staff check seat availability.</li>
+        <li>You get a <strong>confirmation email</strong> with your reservation code.</li>
+        <li>Show the code at the 1F desk on the day.</li>
+      </ol>
+      <p style="margin-top:10px;"><%= settings.reply_sla_text %></p>
+    </div>
+    <div class="side-card">
+      <h3>English tours</h3>
+      <p>Every <strong>Wednesday</strong>: Permanent Exhibition 15:40 · Special Exhibition 16:30.
+      All other sessions are guided in Korean, and an <strong>English audio guide (MP3)</strong>
+      will be provided so you can listen along.</p>
+    </div>
+    <div class="side-card">
+      <h3>Groups of 20–60</h3>
+      <p>Group visits are booked by email (weekdays only, 2 months ahead):<br>
+      <a href="mailto:<%= settings.contact_email %>"><%= settings.contact_email %></a></p>
+    </div>
+    <div class="side-card">
+      <h3>No booking needed for…</h3>
+      <p>Robot &amp; AI Garden, the 1F interactive stations, and RAIM PLAY. <a href="/#walkin">Learn more</a></p>
+    </div>
+  </aside>
+</div>
+
+<%- include('partials/foot') %>
+<script>
+  const preselect = <%- JSON.stringify(Number(form.slot_id) || null) %>;
+  const dateInput = document.getElementById('date');
+  const dayMsg = document.getElementById('dayMsg');
+  const list = document.getElementById('sessionList');
+
+  async function loadSessions() {
+    list.innerHTML = '';
+    const date = dateInput.value;
+    if (!date) { dayMsg.style.display = 'block'; dayMsg.textContent = 'Pick a date above to see available sessions.'; return; }
+    dayMsg.style.display = 'block';
+    dayMsg.textContent = 'Loading sessions…';
+    try {
+      const res = await fetch('/api/sessions?date=' + encodeURIComponent(date));
+      const data = await res.json();
+      if (data.closed) {
+        dayMsg.textContent = (data.reason || 'The museum is closed on this date.') + ' — please pick another day.';
+        return;
+      }
+      if (!data.sessions.length) {
+        dayMsg.textContent = 'No sessions are scheduled on this date. Please pick another day.';
+        return;
+      }
+      dayMsg.style.display = 'none';
+      for (const s of data.sessions) {
+        const wrap = document.createElement('label');
+        wrap.className = 'session-opt';
+        const typeName = s.tour_type === 'permanent' ? 'Permanent Exhibition' : 'Special Exhibition';
+        const langBadge = s.language === 'en'
+          ? '<span class="badge english">ENGLISH</span>'
+          : '<span class="badge korean">KOREAN</span>';
+        wrap.innerHTML =
+          '<input type="radio" name="slot_id" value="' + s.id + '" required ' + (s.past ? 'disabled' : '') + '>' +
+          '<span class="box"><span class="time">' + s.start_time + '–' + s.end_time + '</span>' +
+          '<span class="lbl">' + typeName + (s.past ? ' <em style="color:#b45309;">(already started)</em>' : '') + '</span>' +
+          langBadge + '</span>';
+        list.appendChild(wrap);
+        const input = wrap.querySelector('input');
+        if (preselect && Number(input.value) === preselect && !s.past) input.checked = true;
+      }
+    } catch (e) {
+      dayMsg.textContent = 'Could not load sessions. Please try again.';
+    }
+  }
+  dateInput.addEventListener('change', loadSessions);
+  if (dateInput.value) loadSessions();
+</script>
+</body>
+</html>

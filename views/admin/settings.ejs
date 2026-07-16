@@ -1,0 +1,39 @@
+<%- include('partials/top', { title: 'Settings', active: 'settings', staff }) %>
+
+<h1>Settings</h1>
+<% if (saved) { %><div class="flash ok">Saved.</div><% } %>
+
+<div class="panel">
+  <form method="POST" action="/admin/settings" style="max-width:640px;">
+    <label class="f">Contact email (shown on the site &amp; in emails)</label>
+    <input type="email" name="contact_email" value="<%= settings.contact_email %>" style="width:100%;">
+    <label class="f">Contact phone</label>
+    <input type="text" name="contact_phone" value="<%= settings.contact_phone %>" style="width:100%;">
+    <label class="f">Address (English)</label>
+    <input type="text" name="address_en" value="<%= settings.address_en %>" style="width:100%;">
+    <label class="f">Max party size per online request</label>
+    <input type="number" name="max_party_size" value="<%= settings.max_party_size %>" min="1" max="19">
+    <label class="f">Booking window (days ahead)</label>
+    <input type="number" name="booking_window_days" value="<%= settings.booking_window_days %>" min="1" max="180">
+    <label class="f">Reply-time text shown to visitors</label>
+    <input type="text" name="reply_sla_text" value="<%= settings.reply_sla_text %>" style="width:100%;">
+    <label class="f">Staff notification email (new requests &amp; yeyak releases — empty to disable)</label>
+    <input type="email" name="staff_notify_email" value="<%= settings.staff_notify_email %>" style="width:100%;">
+    <label class="f">Personal data retention (days after visit date)</label>
+    <input type="number" name="retention_days" value="<%= settings.retention_days %>" min="1" max="3650">
+    <br><button class="btn" type="submit" style="margin-top:16px;">Save settings</button>
+  </form>
+</div>
+
+<div class="panel">
+  <h2 style="margin-top:0;">Email delivery</h2>
+  <% if (smtpConfigured) { %>
+    <p>✅ SMTP is configured — emails are sent for real (and logged under <a href="/admin/emails">Emails</a>).</p>
+  <% } else { %>
+    <p>📮 SMTP is <strong>not configured</strong>. Emails are stored in the <a href="/admin/emails">Outbox</a> for preview only.</p>
+    <p class="muted">To send real mail, set these environment variables before starting the server:<br>
+    <code>SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM</code> (see README.md).</p>
+  <% } %>
+</div>
+
+<%- include('partials/bottom') %>

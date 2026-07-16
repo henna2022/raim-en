@@ -1,0 +1,51 @@
+<%- include('partials/top', { title: 'Reservations', active: 'reservations', staff }) %>
+
+<h1>Reservations</h1>
+
+<div class="panel">
+  <form method="GET" action="/admin/reservations" class="row">
+    <div>
+      <label class="f">Status</label>
+      <select name="status">
+        <option value="">All</option>
+        <% for (const [key, [label]] of Object.entries(STATUS_BADGE)) { %>
+          <option value="<%= key %>" <%= status === key ? 'selected' : '' %>><%= label %></option>
+        <% } %>
+      </select>
+    </div>
+    <div>
+      <label class="f">Visit date</label>
+      <input type="date" name="date" value="<%= date %>">
+    </div>
+    <div><button class="btn" type="submit">Filter</button></div>
+    <div><a class="btn gray" href="/admin/reservations">Reset</a></div>
+    <div style="margin-left:auto;"><a class="btn outline" href="/admin/reservations.csv">⬇ Export all (CSV)</a></div>
+    <% if (date) { %><div><a class="btn gray" href="/admin/day/<%= date %>/print" target="_blank">🖨 Print desk list</a></div><% } %>
+  </form>
+</div>
+
+<div class="panel">
+  <% if (rows.length === 0) { %><p class="muted">No reservations match this filter.</p><% } else { %>
+  <table>
+    <tr><th>Code</th><th>Visit</th><th>Session</th><th>Visitor</th><th>Party</th><th>Status</th><th>Decided</th><th>Actions</th></tr>
+    <% for (const r of rows) { const [label, cls] = STATUS_BADGE[r.status]; %>
+      <tr>
+        <td><strong><%= r.code %></strong></td>
+        <td><%= r.visit_date %><br><span class="muted"><%= r.start_time %>–<%= r.end_time %></span></td>
+        <td><%= r.tour_type === 'permanent' ? 'Permanent' : 'Special' %>
+            <span class="badge badge-<%= r.language %>"><%= r.language.toUpperCase() %></span></td>
+        <td><%= r.name %><br><span class="muted"><%= r.email %><%= r.country ? ' · ' + r.country : '' %></span>
+            <% if (r.notes) { %><br><span class="muted">📝 <%= r.notes %></span><% } %></td>
+        <td><%= r.party_size %></td>
+        <td><span class="badge <%= cls %>"><%= label %></span>
+            <% if (r.status === 'declined' && r.decline_reason) { %><br><span class="muted"><%= r.decline_reason %></span><% } %></td>
+        <td class="muted"><%= r.decided_at ? r.decided_at.slice(0, 16) + '\n' + (r.decided_by || '') : '—' %></td>
+        <td><%- include('partials/res_actions', { r }) %></td>
+      </tr>
+    <% } %>
+  </table>
+  <p class="muted">Showing up to 500 rows, newest visit dates first.</p>
+  <% } %>
+</div>
+
+<%- include('partials/bottom') %>

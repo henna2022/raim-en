@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Staff Login — RAIM Admin</title>
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+<div class="login-wrap">
+  <div class="panel">
+    <h1>🤖 RAIM Admin</h1>
+    <p class="muted" style="text-align:center;">Staff sign-in for the foreign visitor reservation system.</p>
+    <% if (error) { %><div class="flash err"><%= error %></div><% } %>
+    <form method="POST" action="/admin/login">
+      <label class="f" for="username">Username</label>
+      <input type="text" id="username" name="username" required autofocus>
+      <label class="f" for="password">Password</label>
+      <input type="password" id="password" name="password" required>
+      <button class="btn" type="submit">Sign in</button>
+    </form>
+  </div>
+</div>
+</body>
+</html>

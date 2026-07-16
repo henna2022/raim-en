@@ -1,0 +1,48 @@
+<%- include('partials/top', { title: 'Staff', active: 'staff', staff }) %>
+
+<h1>Staff accounts</h1>
+<% if (saved) { %><div class="flash ok">Saved.</div><% } %>
+<% if (error) { %><div class="flash err"><%= error %></div><% } %>
+
+<div class="panel">
+  <table>
+    <tr><th>Username</th><th>Name</th><th>Role</th><th>Created</th><th>Reset password</th><th></th></tr>
+    <% for (const s of staffRows) { %>
+      <tr>
+        <td><strong><%= s.username %></strong><%= s.id === staff.id ? ' (you)' : '' %></td>
+        <td><%= s.name %></td>
+        <td><span class="badge <%= s.role === 'admin' ? 'badge-attended' : 'badge-cancelled' %>"><%= s.role.toUpperCase() %></span></td>
+        <td class="muted"><%= s.created_at.slice(0, 10) %></td>
+        <td>
+          <form method="POST" action="/admin/staff/<%= s.id %>/password" class="row">
+            <input type="password" name="password" placeholder="New password (8+)" minlength="8" required>
+            <button class="btn sm gray" type="submit">Reset</button>
+          </form>
+        </td>
+        <td class="right">
+          <% if (s.id !== staff.id) { %>
+            <form method="POST" action="/admin/staff/<%= s.id %>/delete"
+                  onsubmit="return confirm('Delete account <%= s.username %>?');">
+              <button class="btn sm red" type="submit">Delete</button>
+            </form>
+          <% } %>
+        </td>
+      </tr>
+    <% } %>
+  </table>
+</div>
+
+<div class="panel">
+  <h2 style="margin-top:0;">Add a staff account</h2>
+  <form method="POST" action="/admin/staff" class="row">
+    <div><label class="f">Username</label><input type="text" name="username" required pattern="[a-zA-Z0-9._-]{3,}"></div>
+    <div><label class="f">Name</label><input type="text" name="name" required></div>
+    <div><label class="f">Password (8+ chars)</label><input type="password" name="password" minlength="8" required></div>
+    <div><label class="f">Role</label>
+      <select name="role"><option value="staff">Staff</option><option value="admin">Admin</option></select></div>
+    <div><button class="btn" type="submit">Add account</button></div>
+  </form>
+  <p class="muted">Staff can manage reservations, schedule, notices and emails. Admins can additionally manage staff accounts and settings.</p>
+</div>
+
+<%- include('partials/bottom') %>

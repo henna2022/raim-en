@@ -1,0 +1,95 @@
+<%- include('partials/top', { title: 'Dashboard', active: 'dashboard', staff }) %>
+
+<h1>Dashboard</h1>
+<% if (!smtpConfigured) { %>
+  <div class="flash warn">📮 SMTP is not configured — confirmation emails are saved to the
+  <a href="/admin/emails">Outbox</a> instead of being sent. Set SMTP_* environment variables to enable real sending.</div>
+<% } %>
+
+<div>
+  <span class="stat"><span class="n"><%= pending.length %></span><br><span class="l">Pending requests</span></span>
+  <% if (lateCount > 0) { %>
+    <span class="stat late-stat"><span class="n"><%= lateCount %></span><br><span class="l">Over <%= slaHours %>h — reply now</span></span>
+  <% } %>
+  <% if (releaseQueue.length > 0) { %>
+    <span class="stat late-stat"><span class="n"><%= releaseQueue.length %></span><br><span class="l">Yeyak seats to release</span></span>
+  <% } %>
+  <span class="stat"><span class="n"><%= todays.length %></span><br><span class="l">Visitors today (<%= today %>)</span></span>
+  <span class="stat"><a class="btn gray" href="/admin/day/<%= today %>/print" target="_blank">Print today's desk list</a></span>
+</div>
+
+<% if (releaseQueue.length > 0) { %>
+<div class="panel" style="border:1.5px solid #fecaca;">
+  <h2 style="margin-top:0;color:#b91c1c;">Yeyak release queue — seats to unblock</h2>
+  <p class="muted">These confirmed reservations were cancelled. Release the blocked seats in the
+  <strong>yeyak admin</strong> (관리자 예약), then mark done here.</p>
+  <table>
+    <tr><th>Code</th><th>Visit</th><th>Session</th><th>Party</th><th>Cancelled</th><th></th></tr>
+    <% for (const r of releaseQueue) { %>
+      <tr>
+        <td><strong><%= r.code %></strong></td>
+        <td><%= r.visit_date %> <span class="muted"><%= r.start_time %></span></td>
+        <td><%= r.tour_type === 'permanent' ? 'Permanent' : 'Special' %>
+            <span class="badge badge-<%= r.language %>"><%= r.language.toUpperCase() %></span></td>
+        <td><%= r.party_size %></td>
+        <td class="muted"><%= r.decided_at ? r.decided_at.slice(0, 16) : '' %> (<%= r.decided_by %>)</td>
+        <td>
+          <form method="POST" action="/admin/reservations/<%= r.id %>/released"
+                onsubmit="return confirm('yeyak에서 <%= r.party_size %>석을 해제했습니까?');">
+            <button class="btn sm green" type="submit">Seats released</button>
+          </form>
+        </td>
+      </tr>
+    <% } %>
+  </table>
+</div>
+<% } %>
+
+<div class="panel">
+  <h2 style="margin-top:0;">Pending requests — review &amp; confirm</h2>
+  <p class="muted">Workflow: ① check seat availability for the session → ② block the seats in the
+  <strong>yeyak admin</strong> (관리자 예약) → ③ confirm here to send the visitor their confirmation email.</p>
+  <% if (pending.length === 0) { %><p class="muted">No pending requests. 🎉</p><% } else { %>
+  <table>
+    <tr><th>Code</th><th>Visit</th><th>Session</th><th>Visitor</th><th>Party</th><th>Waiting</th><th>Actions</th></tr>
+    <% for (const r of pending) { %>
+      <tr class="<%= r.age.late ? 'late' : '' %>">
+        <td><strong><%= r.code %></strong></td>
+        <td><%= r.visit_date %></td>
+        <td><%= r.start_time %>–<%= r.end_time %> <%= r.tour_type === 'permanent' ? 'Permanent' : 'Special' %>
+            <span class="badge badge-<%= r.language %>"><%= r.language.toUpperCase() %></span></td>
+        <td><%= r.name %><br><span class="muted"><%= r.email %><%= r.country ? ' · ' + r.country : '' %></span>
+            <% if (r.notes) { %><br><span class="muted">Note: <%= r.notes %></span><% } %></td>
+        <td><%= r.party_size %></td>
+        <td class="<%= r.age.late ? '' : 'muted' %>">
+          <%= r.age.label %><% if (r.age.late) { %><br><span class="badge badge-declined">OVER <%= slaHours %>H</span><% } %>
+        </td>
+        <td><%- include('partials/res_actions', { r }) %></td>
+      </tr>
+    <% } %>
+  </table>
+  <% } %>
+</div>
+
+<div class="panel">
+  <h2 style="margin-top:0;">Today's confirmed visitors</h2>
+  <% if (todays.length === 0) { %><p class="muted">No confirmed foreign-visitor reservations today.</p><% } else { %>
+  <table>
+    <tr><th>Time</th><th>Session</th><th>Code</th><th>Name</th><th>Party</th><th>Status</th><th></th></tr>
+    <% for (const r of todays) { const [label, cls] = STATUS_BADGE[r.status]; %>
+      <tr>
+        <td><strong><%= r.start_time %></strong></td>
+        <td><%= r.tour_type === 'permanent' ? 'Permanent' : 'Special' %>
+            <span class="badge badge-<%= r.language %>"><%= r.language.toUpperCase() %></span></td>
+        <td><%= r.code %></td>
+        <td><%= r.name %></td>
+        <td><%= r.party_size %></td>
+        <td><span class="badge <%= cls %>"><%= label %></span></td>
+        <td><%- include('partials/res_actions', { r }) %></td>
+      </tr>
+    <% } %>
+  </table>
+  <% } %>
+</div>
+
+<%- include('partials/bottom') %>

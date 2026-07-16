@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Seoul Robot &amp; AI Museum — English Guide &amp; Reservations</title>
+  <meta name="description" content="Visitor guide and reservation service for foreign visitors to the Seoul Robot & AI Museum (RAIM). Free admission, English docent tours every Wednesday.">
+  <link rel="stylesheet" href="/css/site.css">
+</head>
+<body>
+<%- include('partials/nav') %>
+
+<div class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <h1>Meet <span class="blue">robots and AI</span><br>in Seoul.</h1>
+      <p class="lead">The official English guide and reservation service of the Seoul Robot &amp; AI Museum (RAIM).
+      Book a guided exhibition tour online — no Korean phone number needed.</p>
+      <div class="chips">
+        <span class="chip">Free admission</span>
+        <span class="chip">Tue–Sun 09:30–17:30</span>
+        <span class="chip">Closed Mondays</span>
+        <span class="chip en">English tours every Wednesday</span>
+      </div>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="/reserve">Book a Guided Tour</a>
+        <a class="btn btn-ghost" href="#walkin">Visit without a booking</a>
+      </div>
+    </div>
+    <div>
+      <div class="hero-img"><img src="/img/hero.jpg" alt="Humanoid robot in the permanent exhibition of the Seoul Robot & AI Museum"></div>
+      <div class="hero-credit">Photo: Seoul Robot &amp; AI Museum</div>
+    </div>
+  </div>
+</div>
+
+<section id="visit">
+  <div class="wrap">
+    <h2 class="sec">Plan your visit</h2>
+    <p class="sec-sub">Everything at the museum is free. Guided exhibition tours require an online reservation;
+    the walk-in areas are open to everyone.</p>
+    <div class="grid cols-3">
+      <div class="card">
+        <span class="k">Hours</span>
+        <div class="big">09:30 – 17:30</div>
+        <p>Tuesday to Sunday. Closed every Monday — when Monday is a public holiday, the museum opens
+        that day and closes the next day instead. Also closed Jan 1 and on Korean New Year &amp; Chuseok holidays.</p>
+      </div>
+      <div class="card">
+        <span class="k">Admission</span>
+        <div class="big">Free</div>
+        <p>Exhibitions, guided tours and hands-on experiences are all free of charge.</p>
+      </div>
+      <div class="card">
+        <span class="k">Reservations</span>
+        <div class="big">Book online here</div>
+        <p>The museum's Korean booking system requires Korean phone verification — so foreign visitors
+        book right on this site instead. Staff review each request and confirm by email.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="walkin">
+  <div class="wrap">
+    <h2 class="sec">Guided tour or walk-in</h2>
+    <p class="sec-sub">Two ways to enjoy the museum — with a booking, or just by walking in.</p>
+    <div class="grid cols-2">
+      <div class="card compare-tour">
+        <h3>With a reservation <span class="badge res-needed">BOOKING REQUIRED</span></h3>
+        <ul>
+          <li><strong>Permanent Exhibition Tour</strong> (Floors 1–3) — docent-guided, 6 sessions a day</li>
+          <li><strong>Special Exhibition Tour</strong> — currently <em>Mystery Playground «RE:PLAY»</em> (4F, until Aug 30, 2026)</li>
+          <li><span class="badge english">ENGLISH</span> docent tours every <strong>Wednesday</strong>: Permanent 15:40 · Special 16:30</li>
+          <li><span class="badge korean">KOREAN</span> all other sessions are guided in Korean — everyone is welcome to join</li>
+        </ul>
+        <div class="note teal">An <strong>English audio guide (MP3)</strong> will be provided for Korean-guided
+        sessions, so you can listen along in English on any day of the week.</div>
+        <p style="margin-top:16px;"><a class="btn btn-outline" href="/reserve">Book a session</a></p>
+      </div>
+      <div class="card compare-walk">
+        <h3>Without a reservation <span class="badge walkin">WALK-IN</span></h3>
+        <ul>
+          <li><strong>Robot &amp; AI Garden</strong> — 1F lobby, open through 2028</li>
+          <li><strong>Self-driving Level 3</strong> and the <strong>Trolley Dilemma</strong> — interactive stations on 1F</li>
+          <li><strong>RAIM PLAY</strong> — drop-in creative experience (4F, Tue–Sun)</li>
+        </ul>
+        <div class="note warn">Scheduled education programs are conducted in <strong>Korean</strong> —
+        open viewing is welcome, but classes themselves run in Korean only.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="exhibitions">
+  <div class="wrap">
+    <h2 class="sec">Exhibitions &amp; experiences</h2>
+    <p class="sec-sub">A museum where you meet robots and AI, get to know them, and reflect on the relationship
+    between humans and machines. Swipe through what's on.</p>
+    <div class="slider">
+      <button class="slide-nav prev" type="button" aria-label="Previous" onclick="slideMove(-1)"></button>
+      <button class="slide-nav next" type="button" aria-label="Next" onclick="slideMove(1)"></button>
+      <div class="slides" id="slides">
+
+        <article class="slide">
+          <img src="/img/permanent.jpg" alt="Giant robotic eye exhibit in the permanent exhibition">
+          <div class="slide-body">
+            <h3>Permanent Exhibition <span class="badge res-needed">TOUR</span></h3>
+            <p>The museum's core journey across Floors 1–3, visited with a docent — a lifelike humanoid,
+            a giant robotic eye that follows you around, an electronic garden in bloom, and hands-on stations
+            like Self-driving Level 3 and the Trolley Dilemma. English docent tour every Wednesday at 15:40;
+            an English audio guide (MP3) will be provided for Korean-guided sessions.</p>
+            <div class="ex-facts"><span>Floors 1–3</span><span>6 sessions a day</span><span>40–50 min</span><span>Reservation required</span></div>
+          </div>
+        </article>
+
+        <article class="slide">
+          <img src="/img/replay.jpg" alt="RE:PLAY special exhibition poster with robots at a futuristic amusement park">
+          <div class="slide-body">
+            <h3>Mystery Playground «RE:PLAY» <span class="badge res-needed">TOUR</span></h3>
+            <p>The current special exhibition on 4F, running until Aug 30, 2026 — entertainment technology,
+            and how robots and AI are reinventing human play in an immersive world between reality and the virtual.
+            English docent tour every Wednesday at 16:30; an English audio guide (MP3) will be provided
+            for Korean-guided sessions.</p>
+            <div class="ex-facts"><span>4F</span><span>Until Aug 30, 2026</span><span>Reservation required</span></div>
+          </div>
+        </article>
+
+        <article class="slide">
+          <img src="/img/garden.jpg" alt="1F lobby of the museum with plants and exhibits">
+          <div class="slide-body">
+            <h3>Robot &amp; AI Garden <span class="badge walkin">WALK-IN</span></h3>
+            <p>Technology and nature bloom together in the 1F lobby — a garden tended by robots and AI,
+            open through 2028. No reservation needed: walk in any time during opening hours and explore
+            at your own pace.</p>
+            <div class="ex-facts"><span>1F lobby</span><span>Through 2028</span><span>No booking needed</span></div>
+          </div>
+        </article>
+
+        <article class="slide">
+          <img src="/img/raimplay.jpg" alt="RAIM PLAY experience room with green walls and interactive stations">
+          <div class="slide-body">
+            <h3>RAIM PLAY <span class="badge walkin">WALK-IN</span></h3>
+            <p>A drop-in creative experience on 4F where you explore robots and AI through play, together with
+            LIME, the museum's robot character. Sessions run continuously Tuesday to Sunday — just come by
+            during opening hours.</p>
+            <div class="ex-facts"><span>4F</span><span>Tue–Sun</span><span>No booking needed</span></div>
+          </div>
+        </article>
+
+      </div>
+      <div class="slide-dots" id="slideDots"></div>
+    </div>
+  </div>
+</section>
+
+<section id="getting-here">
+  <div class="wrap">
+    <h2 class="sec">Getting here</h2>
+    <p class="sec-sub"><%= settings.address_en %> — a 5-minute walk from Chang-dong Station, Exit 1.</p>
+    <div class="grid cols-2">
+      <div>
+        <div class="map-figure">
+          <div class="map-grid">
+            <img src="/img/map/tile_111792_50716.png" alt=""><img src="/img/map/tile_111793_50716.png" alt=""><img src="/img/map/tile_111794_50716.png" alt="">
+            <img src="/img/map/tile_111792_50717.png" alt=""><img src="/img/map/tile_111793_50717.png" alt=""><img src="/img/map/tile_111794_50717.png" alt="">
+            <img src="/img/map/tile_111792_50718.png" alt=""><img src="/img/map/tile_111793_50718.png" alt=""><img src="/img/map/tile_111794_50718.png" alt="">
+          </div>
+          <div class="pin museum" style="left:43%;top:33.6%;"><span class="dot"></span><span class="tag">Seoul Robot &amp; AI Museum</span></div>
+          <div class="pin station" style="left:21.9%;top:69.7%;"><span class="dot"></span><span class="tag">Chang-dong Stn (Line 1·4)</span></div>
+          <div class="map-attrib">© OpenStreetMap contributors</div>
+        </div>
+      </div>
+      <div class="card" style="background:#fff;padding:6px 24px;">
+        <div class="route">
+          <div class="mode">SUBWAY</div>
+          <p><strong>Chang-dong Station</strong> (Line 1 &amp; Line 4), <strong>Exit 1</strong> — about a 5-minute walk.
+          The easiest way to reach us.</p>
+        </div>
+        <div class="route">
+          <div class="mode">AIRPORT</div>
+          <p>From <strong>Incheon Airport</strong>: AREX to Seoul Station, then Line 1 or Line 4 to Chang-dong
+          (about 1h 40m). From <strong>Gimpo Airport</strong>: Line 5, transfer to Line 1 or 4 (about 1h 10m).</p>
+        </div>
+        <div class="route">
+          <div class="mode">BUS</div>
+          <p>Get off at <strong>Chang-dong Nonghyup Logistics Center</strong>: village buses Nowon 15,
+          Dobong 08, Dobong 09, or branch bus 1119.</p>
+        </div>
+        <div class="route">
+          <div class="mode">CAR</div>
+          <p>Parking is very limited and subject to access restrictions — we strongly recommend public transport.</p>
+        </div>
+        <div class="maplinks" style="padding-bottom:18px;">
+          <a href="https://map.naver.com/p/search/서울로봇인공지능과학관" target="_blank" rel="noopener">Naver Map</a>
+          <a href="https://map.kakao.com/?q=서울로봇인공지능과학관" target="_blank" rel="noopener">Kakao Map</a>
+          <a href="https://www.google.com/maps/search/?api=1&query=Seoul+Robot+%26+AI+Museum" target="_blank" rel="noopener">Google Maps</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="notices">
+  <div class="wrap">
+    <h2 class="sec">Notices</h2>
+    <p class="sec-sub">Updates that affect your visit — closures, special openings and access changes.</p>
+    <div class="card">
+      <% if (notices.length === 0) { %>
+        <p style="color:var(--ink-faint);">No notices at the moment.</p>
+      <% } %>
+      <% for (const n of notices) { %>
+        <div class="notice-item">
+          <h4><% if (n.pinned) { %><span class="notice-pin">NOTICE</span><% } %><%= n.title %></h4>
+          <p><%= n.body %></p>
+          <div class="meta"><%= n.created_at.slice(0, 10) %></div>
+        </div>
+      <% } %>
+    </div>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <h2 class="sec">FAQ</h2>
+    <p class="sec-sub">Quick answers for international visitors.</p>
+
+    <details class="faq"><summary>Do I need a reservation to visit?</summary>
+      <div class="faq-body">Only for guided exhibition tours (Permanent and Special Exhibitions). The walk-in areas —
+      Robot &amp; AI Garden, the 1F interactive stations and RAIM PLAY — are open to everyone without a booking.</div></details>
+    <details class="faq"><summary>I don't have a Korean phone number. How do I book?</summary>
+      <div class="faq-body">That's exactly what this site is for. Submit a request on our <a href="/reserve">booking page</a> —
+      you only need your name and email. Museum staff review each request and send a confirmation email.</div></details>
+    <details class="faq"><summary>Are the tours in English?</summary>
+      <div class="faq-body">Every <strong>Wednesday</strong> a professional English-speaking docent leads free tours:
+      Permanent Exhibition at 15:40 and Special Exhibition at 16:30. All other sessions are guided in Korean,
+      and an <strong>English audio guide (MP3)</strong> will be provided so you can listen along on any day.</div></details>
+    <details class="faq"><summary>Is it really free?</summary>
+      <div class="faq-body">Yes — admission, guided tours and the walk-in experiences are all free of charge.</div></details>
+    <details class="faq"><summary>How long does a visit take?</summary>
+      <div class="faq-body">Guided tours run about 40–50 minutes per exhibition. With the walk-in areas,
+      plan around 2–3 hours for a relaxed visit.</div></details>
+    <details class="faq"><summary>Can children visit?</summary>
+      <div class="faq-body">Absolutely — the museum welcomes all ages. Children should be accompanied by an adult,
+      and accompanying adults count toward the party size of your booking.</div></details>
+    <details class="faq"><summary>We are a group of 20 or more. Can we book here?</summary>
+      <div class="faq-body">Group visits (20–60 people) run on weekdays only and are booked separately by email.
+      Write to <a href="mailto:<%= settings.contact_email %>"><%= settings.contact_email %></a> at least
+      2 months before your visit date.</div></details>
+    <details class="faq"><summary>What happens if I can't make it?</summary>
+      <div class="faq-body">Please cancel through the <a href="/booking">My Booking</a> page — it takes a minute.
+      No-shows block seats other visitors wanted, and repeated no-shows may lead to future requests being declined.</div></details>
+    <details class="faq"><summary>Is there parking?</summary>
+      <div class="faq-body">The parking lot is small and subject to access restrictions, so we strongly recommend the subway:
+      Chang-dong Station (Line 1/4), Exit 1, then a 5-minute walk.</div></details>
+  </div>
+</section>
+
+<%- include('partials/foot') %>
+<script>
+  const track = document.getElementById('slides');
+  const dotsBox = document.getElementById('slideDots');
+  const slides = track.querySelectorAll('.slide');
+  slides.forEach((_, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('aria-label', 'Go to slide ' + (i + 1));
+    b.addEventListener('click', () => glideTo(i * step()));
+    dotsBox.appendChild(b);
+  });
+  function step() { return slides[0].offsetWidth + 16; }
+  let glideTimer = null;
+  function glideTo(target) {
+    target = Math.max(0, Math.min(track.scrollWidth - track.clientWidth, target));
+    const from = track.scrollLeft;
+    const dist = target - from;
+    const dur = 320;
+    const t0 = Date.now();
+    clearInterval(glideTimer);
+    glideTimer = setInterval(() => {
+      const p = Math.min(1, (Date.now() - t0) / dur);
+      track.scrollLeft = from + dist * (1 - Math.pow(1 - p, 3));
+      syncDots();
+      if (p >= 1) clearInterval(glideTimer);
+    }, 16);
+  }
+  function slideMove(dir) {
+    const i = Math.round(track.scrollLeft / step()) + dir;
+    glideTo(Math.max(0, Math.min(slides.length - 1, i)) * step());
+  }
+  function syncDots() {
+    const i = Math.min(slides.length - 1, Math.round(track.scrollLeft / step()));
+    dotsBox.querySelectorAll('button').forEach((d, j) => d.classList.toggle('on', j === i));
+  }
+  track.addEventListener('scroll', syncDots, { passive: true });
+  syncDots();
+</script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+{
+  "name": "raim-en",
+  "version": "0.1.0",
+  "description": "Seoul Robot & AI Museum — English visitor guide and reservation system for foreign visitors",
+  "private": true,
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "node --watch src/app.js"
+  },
+  "engines": {
+    "node": ">=22.5"
+  },
+  "dependencies": {
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "express-session": "^1.18.1",
+    "nodemailer": "^6.9.16"
+  }
+}

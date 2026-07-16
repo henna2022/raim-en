@@ -1,0 +1,31 @@
+<%- include('partials/top', { title: 'Emails', active: 'emails', staff }) %>
+
+<h1>Emails</h1>
+<% if (!smtpConfigured) { %>
+  <div class="flash warn">📮 SMTP not configured — these emails were <strong>not actually sent</strong>.
+  They are stored here so you can preview exactly what visitors would receive.</div>
+<% } %>
+
+<div class="panel">
+  <% if (emails.length === 0) { %><p class="muted">No emails yet.</p><% } else { %>
+  <table>
+    <tr><th>#</th><th>To</th><th>Subject</th><th>Delivery</th><th>Created</th><th></th></tr>
+    <% for (const e of emails) { %>
+      <tr>
+        <td class="muted"><%= e.id %></td>
+        <td><%= e.to_addr %></td>
+        <td><%= e.subject %></td>
+        <td>
+          <% if (e.sent) { %><span class="badge badge-confirmed">SENT</span>
+          <% } else if (e.error) { %><span class="badge badge-declined">ERROR</span> <span class="muted"><%= e.error %></span>
+          <% } else { %><span class="badge badge-pending">OUTBOX</span><% } %>
+        </td>
+        <td class="muted"><%= e.created_at %></td>
+        <td><a class="btn sm gray" href="/admin/emails/<%= e.id %>" target="_blank">Preview</a></td>
+      </tr>
+    <% } %>
+  </table>
+  <% } %>
+</div>
+
+<%- include('partials/bottom') %>

@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "raim-en",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["start"],
+      "cwd": "/Users/henna/Desktop/raim-en",
+      "port": 4310
+    }
+  ]
+}

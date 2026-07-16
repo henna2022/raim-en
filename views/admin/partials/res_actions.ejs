@@ -1,0 +1,33 @@
+<% /* expects: r (reservation row) */ %>
+<% if (r.status === 'pending') { %>
+  <details class="inline-edit">
+    <summary>Confirm / decline</summary>
+    <form method="POST" action="/admin/reservations/<%= r.id %>/confirm" class="confirm-box">
+      <label style="display:flex;gap:8px;align-items:flex-start;">
+        <input type="checkbox" name="yeyak_blocked" required>
+        <span>I have <strong>blocked <%= r.party_size %> seat(s)</strong> for this session in the
+        Seoul Public Service Reservation (yeyak) admin.</span>
+      </label>
+      <button class="btn sm green" type="submit" style="margin-top:8px;">Confirm &amp; email visitor</button>
+    </form>
+    <form method="POST" action="/admin/reservations/<%= r.id %>/decline" class="decline-box">
+      <input type="text" name="decline_reason" placeholder="Reason shown to visitor (e.g. session fully booked)" style="width:100%;">
+      <button class="btn sm red" type="submit" style="margin-top:8px;">Decline &amp; email visitor</button>
+    </form>
+  </details>
+<% } else if (r.status === 'confirmed') { %>
+  <details class="inline-edit">
+    <summary>Update</summary>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
+      <form method="POST" action="/admin/reservations/<%= r.id %>/attended"><button class="btn sm" type="submit">Attended</button></form>
+      <form method="POST" action="/admin/reservations/<%= r.id %>/no_show"><button class="btn sm gray" type="submit">No-show</button></form>
+      <form method="POST" action="/admin/reservations/<%= r.id %>/cancel"
+            onsubmit="return confirm('Cancel this reservation and email the visitor?');">
+        <button class="btn sm red" type="submit">Cancel</button></form>
+    </div>
+  </details>
+<% } else { %>
+  <form method="POST" action="/admin/reservations/<%= r.id %>/reopen" style="margin-top:4px;">
+    <button class="btn sm outline" type="submit">Reopen as pending</button>
+  </form>
+<% } %>

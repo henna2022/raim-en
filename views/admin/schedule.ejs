@@ -1,0 +1,104 @@
+<%- include('partials/top', { title: 'Schedule', active: 'schedule', staff }) %>
+<% const WDAYS = [[2,'Tue'],[3,'Wed'],[4,'Thu'],[5,'Fri'],[6,'Sat'],[0,'Sun'],[1,'Mon']]; %>
+
+<h1>Schedule</h1>
+<% if (saved) { %><div class="flash ok">Saved.</div><% } %>
+<% if (error) { %><div class="flash err"><%= error %></div><% } %>
+
+<div class="panel">
+  <h2 style="margin-top:0;">Tour sessions</h2>
+  <p class="muted">These define which sessions visitors can request, per weekday. Deactivate (or delete) a session to
+  hide it from the booking form. Sessions with existing reservations are deactivated instead of deleted.</p>
+  <table>
+    <tr><th>Label</th><th>Type</th><th>Time</th><th>Language</th><th>Days</th><th>Active</th><th></th></tr>
+    <% for (const s of slots) { %>
+      <tr>
+        <td colspan="7" style="padding:0;border-bottom:1px solid var(--line);">
+          <form method="POST" action="/admin/schedule/slots/<%= s.id %>" class="row" style="padding:9px 10px;align-items:center;">
+            <input type="text" name="label" value="<%= s.label %>" style="flex:1;min-width:220px;">
+            <select name="tour_type">
+              <option value="permanent" <%= s.tour_type === 'permanent' ? 'selected' : '' %>>Permanent</option>
+              <option value="special" <%= s.tour_type === 'special' ? 'selected' : '' %>>Special</option>
+            </select>
+            <input type="time" name="start_time" value="<%= s.start_time %>" required>
+            <input type="time" name="end_time" value="<%= s.end_time %>" required>
+            <select name="language">
+              <option value="ko" <%= s.language === 'ko' ? 'selected' : '' %>>Korean</option>
+              <option value="en" <%= s.language === 'en' ? 'selected' : '' %>>English</option>
+            </select>
+            <span style="display:flex;gap:6px;flex-wrap:wrap;">
+              <% for (const [num, name] of WDAYS) { %>
+                <label style="font-size:12px;display:flex;gap:3px;align-items:center;">
+                  <input type="checkbox" name="weekdays" value="<%= num %>"
+                         <%= s.weekdays.split(',').includes(String(num)) ? 'checked' : '' %>><%= name %>
+                </label>
+              <% } %>
+            </span>
+            <label style="font-size:12px;display:flex;gap:4px;align-items:center;">
+              <input type="checkbox" name="active" <%= s.active ? 'checked' : '' %>> active
+            </label>
+            <button class="btn sm" type="submit">Save</button>
+            <button class="btn sm red" type="submit" name="_delete" value="1"
+                    onclick="return confirm('Delete this session?');">Delete</button>
+          </form>
+        </td>
+      </tr>
+    <% } %>
+  </table>
+
+  <h2>Add a session</h2>
+  <form method="POST" action="/admin/schedule/slots" class="row">
+    <div><label class="f">Label</label><input type="text" name="label" placeholder="e.g. Permanent Exhibition Tour #7" style="min-width:260px;" required></div>
+    <div><label class="f">Type</label>
+      <select name="tour_type"><option value="permanent">Permanent</option><option value="special">Special</option></select></div>
+    <div><label class="f">Start</label><input type="time" name="start_time" required></div>
+    <div><label class="f">End</label><input type="time" name="end_time" required></div>
+    <div><label class="f">Language</label>
+      <select name="language"><option value="ko">Korean</option><option value="en">English</option></select></div>
+    <div><label class="f">Days</label>
+      <span style="display:flex;gap:6px;flex-wrap:wrap;">
+        <% for (const [num, name] of WDAYS) { %>
+          <label style="font-size:12px;display:flex;gap:3px;align-items:center;">
+            <input type="checkbox" name="weekdays" value="<%= num %>" <%= num !== 1 ? 'checked' : '' %>><%= name %>
+          </label>
+        <% } %>
+      </span></div>
+    <div><label class="f">&nbsp;</label>
+      <label style="font-size:12px;"><input type="checkbox" name="active" checked> active</label></div>
+    <div><button class="btn" type="submit">Add session</button></div>
+  </form>
+</div>
+
+<div class="panel">
+  <h2 style="margin-top:0;">Closures &amp; special openings</h2>
+  <p class="muted">Mondays are closed automatically. Add a date here to close the museum on another day
+  (holiday closure), or to <em>open</em> a Monday (e.g. when Monday is a public holiday and the closure moves to Tuesday).</p>
+  <table>
+    <tr><th>Date</th><th>Kind</th><th>Reason</th><th></th></tr>
+    <% for (const c of closures) { %>
+      <tr>
+        <td><%= c.date %></td>
+        <td><span class="badge <%= c.kind === 'open' ? 'badge-confirmed' : 'badge-declined' %>"><%= c.kind.toUpperCase() %></span></td>
+        <td><%= c.reason %></td>
+        <td class="right">
+          <form method="POST" action="/admin/schedule/closures/<%= c.id %>/delete" style="display:inline;">
+            <button class="btn sm red" type="submit">Remove</button>
+          </form>
+        </td>
+      </tr>
+    <% } %>
+  </table>
+  <form method="POST" action="/admin/schedule/closures" class="row" style="margin-top:14px;">
+    <div><label class="f">Date</label><input type="date" name="date" required></div>
+    <div><label class="f">Kind</label>
+      <select name="kind">
+        <option value="closed">Closed (extra closure)</option>
+        <option value="open">Open (override Monday closure)</option>
+      </select></div>
+    <div style="flex:1;"><label class="f">Reason (shown to visitors)</label>
+      <input type="text" name="reason" placeholder="e.g. Chuseok holiday" style="width:100%;"></div>
+    <div><button class="btn" type="submit">Add</button></div>
+  </form>
+</div>
+
+<%- include('partials/bottom') %>
