@@ -83,6 +83,12 @@ CREATE TABLE IF NOT EXISTS email_log (
   error TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS sessions (
+  sid TEXT PRIMARY KEY,
+  data TEXT NOT NULL,
+  expires INTEGER NOT NULL   -- epoch ms
+);
 CREATE INDEX IF NOT EXISTS idx_res_date ON reservations(visit_date);
 CREATE INDEX IF NOT EXISTS idx_res_status ON reservations(status);
 `);

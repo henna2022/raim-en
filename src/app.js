@@ -3,9 +3,20 @@ const path = require('node:path');
 const express = require('express');
 const session = require('express-session');
 const { csrfMiddleware } = require('./csrf');
+const SqliteStore = require('./session-store');
 
 require('./db'); // initialize schema + seed
 require('./maintenance').start(); // personal-data retention purge
+
+// Refuse to boot in production without a real session secret — the fallback
+// below is public (checked into git) and would let anyone forge session cookies.
+if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
+  console.error('FATAL: SESSION_SECRET must be set in production.');
+  process.exit(1);
+}
+if (process.env.NODE_ENV !== 'production' && !process.env.SESSION_SECRET) {
+  console.warn('[session] SESSION_SECRET not set — using the insecure default secret. Set SESSION_SECRET before deploying to production.');
+}
 
 const app = express();
 const PORT = Number(process.env.PORT || 4310);
@@ -22,10 +33,20 @@ app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use(session({
   name: 'raim.sid',
+  store: new SqliteStore(),
   secret: process.env.SESSION_SECRET || 'dev-only-secret-change-me',
   resave: false,
   saveUninitialized: false,
-  cookie: { httpOnly: true, sameSite: 'lax', maxAge: 8 * 60 * 60 * 1000 },
+  cookie: {
+    httpOnly: true,
+    sameSite: 'lax',
+    maxAge: 8 * 60 * 60 * 1000,
+    // Only mark cookies secure in production. Behind a reverse proxy that
+    // terminates TLS, TRUST_PROXY=1 (see `trust proxy` setting above) must
+    // also be set, or Express won't see the request as secure and the
+    // browser will silently refuse to send the cookie back.
+    secure: process.env.NODE_ENV === 'production',
+  },
 }));
 app.use(csrfMiddleware);
 

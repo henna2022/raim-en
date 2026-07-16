@@ -5,6 +5,7 @@ const {
   DATE_RE, todayStr, closureInfo, getReservation, STATUS_BADGE, getSettings,
 } = require('../helpers');
 const mailer = require('../mailer');
+const { rateLimit } = require('../ratelimit');
 
 const router = express.Router();
 
@@ -18,17 +19,71 @@ function requireAdmin(req, res, next) {
   res.status(403).render('admin/error', { staff: req.session.staff, message: 'Admin role required.' });
 }
 
+// Same wording for both IP-level and account-level lockout so a client can't
+// tell the two apart (and, for account lockout, can't tell "wrong password"
+// from "this username exists and is locked").
+const LOCKOUT_MESSAGE = 'Too many attempts. Try again later.';
+
+// IP-based brute-force guard, reusing P0-1's in-memory limiter.
+const loginIpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  onLimit: (req, res) => {
+    res.status(429).render('admin/login', { error: LOCKOUT_MESSAGE });
+  },
+});
+
+// Account-based lockout: module-scope Map<username, {fails, lockedUntil}>.
+// Intentionally memory-only (not persisted to DB) — resets on restart, which
+// is an accepted tradeoff per the spec.
+const loginAttempts = new Map();
+const ACCOUNT_LOCK_THRESHOLD = 5;
+const ACCOUNT_LOCK_MS = 15 * 60 * 1000;
+const LOGIN_FAIL_DELAY_MS = 400;
+// Bound the Map against username-spraying: drop entries whose lock has passed
+// (unlocked fail counters are cheap to lose — the IP limiter still applies).
+setInterval(() => {
+  const now = Date.now();
+  for (const [name, e] of loginAttempts) {
+    if (e.lockedUntil <= now) loginAttempts.delete(name);
+  }
+}, 30 * 60 * 1000).unref();
+
 router.get('/login', (req, res) => {
   if (req.session.staff) return res.redirect('/admin');
   res.render('admin/login', { error: null });
 });
-router.post('/login', (req, res) => {
+router.post('/login', loginIpLimiter, async (req, res) => {
   const username = String(req.body.username || '').trim();
   const password = String(req.body.password || '');
+  const ip = req.ip;
+  const now = Date.now();
+
+  const existing = loginAttempts.get(username);
+  if (existing && existing.lockedUntil > now) {
+    console.warn('[auth] failed login', { username, ip });
+    await new Promise(r => setTimeout(r, LOGIN_FAIL_DELAY_MS));
+    return res.status(429).render('admin/login', { error: LOCKOUT_MESSAGE });
+  }
+
   const row = db.prepare('SELECT * FROM staff WHERE username = ?').get(username);
-  if (!row || !verifyPassword(password, row.pw_salt, row.pw_hash)) {
+  const valid = row && verifyPassword(password, row.pw_salt, row.pw_hash);
+  if (!valid) {
+    const entry = loginAttempts.get(username) || { fails: 0, lockedUntil: 0 };
+    entry.fails += 1;
+    let justLocked = false;
+    if (entry.fails >= ACCOUNT_LOCK_THRESHOLD) {
+      entry.lockedUntil = now + ACCOUNT_LOCK_MS;
+      justLocked = true;
+    }
+    loginAttempts.set(username, entry);
+    console.warn('[auth] failed login', { username, ip });
+    await new Promise(r => setTimeout(r, LOGIN_FAIL_DELAY_MS));
+    if (justLocked) return res.status(429).render('admin/login', { error: LOCKOUT_MESSAGE });
     return res.status(401).render('admin/login', { error: 'Invalid username or password.' });
   }
+
+  loginAttempts.delete(username);
   req.session.staff = { id: row.id, username: row.username, name: row.name, role: row.role };
   res.redirect('/admin');
 });
