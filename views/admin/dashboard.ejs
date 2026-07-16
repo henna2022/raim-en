@@ -36,6 +36,7 @@
         <td>
           <form method="POST" action="/admin/reservations/<%= r.id %>/released"
                 onsubmit="return confirm('yeyak에서 <%= r.party_size %>석을 해제했습니까?');">
+            <input type="hidden" name="_csrf" value="<%= csrf %>">
             <button class="btn sm green" type="submit">Seats released</button>
           </form>
         </td>

@@ -2,6 +2,7 @@
 const path = require('node:path');
 const express = require('express');
 const session = require('express-session');
+const { csrfMiddleware } = require('./csrf');
 
 require('./db'); // initialize schema + seed
 require('./maintenance').start(); // personal-data retention purge
@@ -26,6 +27,7 @@ app.use(session({
   saveUninitialized: false,
   cookie: { httpOnly: true, sameSite: 'lax', maxAge: 8 * 60 * 60 * 1000 },
 }));
+app.use(csrfMiddleware);
 
 app.use('/', require('./routes/public'));
 app.use('/admin', require('./routes/admin'));

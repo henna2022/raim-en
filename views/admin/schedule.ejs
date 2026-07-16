@@ -15,6 +15,7 @@
       <tr>
         <td colspan="7" style="padding:0;border-bottom:1px solid var(--line);">
           <form method="POST" action="/admin/schedule/slots/<%= s.id %>" class="row" style="padding:9px 10px;align-items:center;">
+            <input type="hidden" name="_csrf" value="<%= csrf %>">
             <input type="text" name="label" value="<%= s.label %>" style="flex:1;min-width:220px;">
             <select name="tour_type">
               <option value="permanent" <%= s.tour_type === 'permanent' ? 'selected' : '' %>>Permanent</option>
@@ -48,6 +49,7 @@
 
   <h2>Add a session</h2>
   <form method="POST" action="/admin/schedule/slots" class="row">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
     <div><label class="f">Label</label><input type="text" name="label" placeholder="e.g. Permanent Exhibition Tour #7" style="min-width:260px;" required></div>
     <div><label class="f">Type</label>
       <select name="tour_type"><option value="permanent">Permanent</option><option value="special">Special</option></select></div>
@@ -82,6 +84,7 @@
         <td><%= c.reason %></td>
         <td class="right">
           <form method="POST" action="/admin/schedule/closures/<%= c.id %>/delete" style="display:inline;">
+            <input type="hidden" name="_csrf" value="<%= csrf %>">
             <button class="btn sm red" type="submit">Remove</button>
           </form>
         </td>
@@ -89,6 +92,7 @@
     <% } %>
   </table>
   <form method="POST" action="/admin/schedule/closures" class="row" style="margin-top:14px;">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
     <div><label class="f">Date</label><input type="date" name="date" required></div>
     <div><label class="f">Kind</label>
       <select name="kind">

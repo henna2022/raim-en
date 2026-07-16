@@ -19,6 +19,7 @@
 
 <div class="wrap reserve-layout">
   <form class="panel" method="POST" action="/reserve" id="reserveForm">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
     <% if (error) { %><div class="error-box"><%= error %></div><% } %>
 
     <h2><span class="stepnum">1</span> Choose a date</h2>

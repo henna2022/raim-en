@@ -8,6 +8,7 @@ Keep them visitor-relevant: closures, special openings, parking, events.</p>
 <div class="panel">
   <h2 style="margin-top:0;">Add a notice</h2>
   <form method="POST" action="/admin/notices">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
     <label class="f">Title</label>
     <input type="text" name="title" style="width:100%;" required maxlength="200">
     <label class="f">Body (plain text, English)</label>
@@ -28,6 +29,7 @@ Keep them visitor-relevant: closures, special openings, parking, events.</p>
 <% for (const n of notices) { %>
   <div class="panel">
     <form method="POST" action="/admin/notices/<%= n.id %>">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
       <div class="row" style="align-items:center;">
         <strong style="flex:1;"><% if (n.pinned) { %>📌 <% } %><%= n.title %></strong>
         <span class="badge <%= n.published ? 'badge-confirmed' : 'badge-cancelled' %>"><%= n.published ? 'PUBLISHED' : 'HIDDEN' %></span>

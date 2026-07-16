@@ -15,6 +15,7 @@
         <td class="muted"><%= s.created_at.slice(0, 10) %></td>
         <td>
           <form method="POST" action="/admin/staff/<%= s.id %>/password" class="row">
+            <input type="hidden" name="_csrf" value="<%= csrf %>">
             <input type="password" name="password" placeholder="New password (8+)" minlength="8" required>
             <button class="btn sm gray" type="submit">Reset</button>
           </form>
@@ -23,6 +24,7 @@
           <% if (s.id !== staff.id) { %>
             <form method="POST" action="/admin/staff/<%= s.id %>/delete"
                   onsubmit="return confirm('Delete account <%= s.username %>?');">
+              <input type="hidden" name="_csrf" value="<%= csrf %>">
               <button class="btn sm red" type="submit">Delete</button>
             </form>
           <% } %>
@@ -35,6 +37,7 @@
 <div class="panel">
   <h2 style="margin-top:0;">Add a staff account</h2>
   <form method="POST" action="/admin/staff" class="row">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
     <div><label class="f">Username</label><input type="text" name="username" required pattern="[a-zA-Z0-9._-]{3,}"></div>
     <div><label class="f">Name</label><input type="text" name="name" required></div>
     <div><label class="f">Password (8+ chars)</label><input type="password" name="password" minlength="8" required></div>

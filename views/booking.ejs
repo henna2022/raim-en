@@ -58,6 +58,7 @@
       <% if (['pending','confirmed'].includes(r.status)) { %>
         <form method="POST" action="/booking/cancel" style="margin-top:20px;"
               onsubmit="return confirm('Cancel this reservation?');">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
           <input type="hidden" name="code" value="<%= r.code %>">
           <input type="hidden" name="email" value="<%= r.email %>">
           <button class="btn btn-danger" type="submit">Cancel this reservation</button>

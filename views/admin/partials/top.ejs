@@ -22,7 +22,7 @@
   </nav>
   <span class="who">
     <%= staff ? staff.name + ' (' + staff.role + ')' : '' %>
-    <form method="POST" action="/admin/logout" style="display:inline;"><button class="linky" type="submit">Log out</button></form>
+    <form method="POST" action="/admin/logout" style="display:inline;"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="linky" type="submit">Log out</button></form>
   </span>
 </div>
 <div class="wrap">

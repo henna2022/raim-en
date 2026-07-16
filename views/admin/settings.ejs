@@ -5,6 +5,7 @@
 
 <div class="panel">
   <form method="POST" action="/admin/settings" style="max-width:640px;">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
     <label class="f">Contact email (shown on the site &amp; in emails)</label>
     <input type="email" name="contact_email" value="<%= settings.contact_email %>" style="width:100%;">
     <label class="f">Contact phone</label>
