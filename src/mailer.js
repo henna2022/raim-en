@@ -102,6 +102,20 @@ function declinedEmail(r) {
     <p style="color:#6b7280;">Questions? Contact us at ${s.contact_email}.</p>`);
 }
 
+function reminderEmail(r) {
+  return baseTemplate('Your visit is tomorrow', `
+    <p>Dear ${r.name},</p>
+    <p>This is a reminder that your visit is <strong>tomorrow</strong>.</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <tr><td style="padding:6px 0;color:#6b7280;width:130px;">Reservation code</td><td style="font-weight:bold;">${r.code}</td></tr>
+      <tr><td style="padding:6px 0;color:#6b7280;">Tour</td><td>${fmtSlot(r)}</td></tr>
+      <tr><td style="padding:6px 0;color:#6b7280;">Party size</td><td>${r.party_size}</td></tr>
+    </table>
+    <p>Please arrive 10 minutes early and check in at the 1F desk.</p>
+    <p><strong>Getting here:</strong> Chang-dong Stn Exit 1.</p>
+    <p>If your plans have changed, please cancel via the My Booking page.</p>`);
+}
+
 function cancelledEmail(r) {
   return baseTemplate('Your reservation was cancelled', `
     <p>Dear ${r.name},</p>
@@ -168,7 +182,7 @@ async function notifyStaff(subject, html) {
 }
 
 module.exports = {
-  sendMail, requestReceivedEmail, confirmedEmail, declinedEmail, cancelledEmail,
+  sendMail, requestReceivedEmail, confirmedEmail, declinedEmail, cancelledEmail, reminderEmail,
   staffNewRequestEmail, staffReleaseEmail, notifyStaff,
   smtpConfigured: !!transporter,
 };

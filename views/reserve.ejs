@@ -82,9 +82,10 @@
     </div>
     <div class="side-card">
       <h3>English tours</h3>
-      <p>Every <strong>Wednesday</strong>: Permanent Exhibition 15:40 · Special Exhibition 16:30.
+      <p><% if (enTours.available) { %><%= enTours.summary %>.
       All other sessions are guided in Korean, and an <strong>English audio guide (MP3)</strong>
-      will be provided so you can listen along.</p>
+      will be provided so you can listen along.<% } else { %>English docent tours are not currently scheduled.
+      An <strong>English audio guide (MP3)</strong> will be provided so you can listen along.<% } %></p>
     </div>
     <div class="side-card">
       <h3>Groups of 20–60</h3>

@@ -108,7 +108,8 @@ function ageInfo(createdAtUtc) {
 router.get('/', (req, res) => {
   const today = todayStr();
   const pending = db.prepare(`
-    SELECT r.*, s.tour_type, s.start_time, s.end_time, s.language
+    SELECT r.*, s.tour_type, s.start_time, s.end_time, s.language,
+           (SELECT COUNT(*) FROM reservations n WHERE n.email = r.email AND n.status = 'no_show') AS noshow_count
     FROM reservations r JOIN slots s ON s.id = r.slot_id
     WHERE r.status = 'pending' ORDER BY r.created_at`).all()
     .map(r => ({ ...r, age: ageInfo(r.created_at) }));
@@ -132,7 +133,8 @@ router.get('/', (req, res) => {
 router.get('/reservations', (req, res) => {
   const status = String(req.query.status || '');
   const date = String(req.query.date || '');
-  let sql = `SELECT r.*, s.tour_type, s.start_time, s.end_time, s.language
+  let sql = `SELECT r.*, s.tour_type, s.start_time, s.end_time, s.language,
+             (SELECT COUNT(*) FROM reservations n WHERE n.email = r.email AND n.status = 'no_show') AS noshow_count
              FROM reservations r JOIN slots s ON s.id = r.slot_id WHERE 1=1`;
   const params = [];
   if (status && STATUS_BADGE[status]) { sql += ' AND r.status = ?'; params.push(status); }
@@ -368,7 +370,7 @@ router.get('/settings', requireAdmin, (req, res) => {
   });
 });
 router.post('/settings', requireAdmin, (req, res) => {
-  const keys = ['contact_email', 'contact_phone', 'address_en', 'max_party_size', 'booking_window_days', 'reply_sla_text', 'staff_notify_email', 'retention_days'];
+  const keys = ['contact_email', 'contact_phone', 'address_en', 'max_party_size', 'booking_window_days', 'reply_sla_text', 'staff_notify_email', 'retention_days', 'noshow_retention_days'];
   for (const k of keys) {
     if (req.body[k] != null) setSetting(k, String(req.body[k]).trim().slice(0, 500));
   }

@@ -20,7 +20,7 @@
         <span class="chip">Free admission</span>
         <span class="chip">Tue–Sun 09:30–17:30</span>
         <span class="chip">Closed Mondays</span>
-        <span class="chip en">English tours every Wednesday</span>
+        <% if (enTours.available) { %><span class="chip en"><%= enTours.chip %></span><% } %>
       </div>
       <div class="cta-row">
         <a class="btn btn-primary" href="/reserve">Book a Guided Tour</a>
@@ -71,7 +71,11 @@
         <ul>
           <li><strong>Permanent Exhibition Tour</strong> (Floors 1–3) — docent-guided, 6 sessions a day</li>
           <li><strong>Special Exhibition Tour</strong> — currently <em>Mystery Playground «RE:PLAY»</em> (4F, until Aug 30, 2026)</li>
-          <li><span class="badge english">ENGLISH</span> docent tours every <strong>Wednesday</strong>: Permanent 15:40 · Special 16:30</li>
+          <% if (enTours.available) { %>
+          <li><span class="badge english">ENGLISH</span> docent tours — <%= enTours.summary %></li>
+          <% } else { %>
+          <li>English docent tours are not currently scheduled.</li>
+          <% } %>
           <li><span class="badge korean">KOREAN</span> all other sessions are guided in Korean — everyone is welcome to join</li>
         </ul>
         <div class="note teal">An <strong>English audio guide (MP3)</strong> will be provided for Korean-guided
@@ -108,8 +112,8 @@
             <h3>Permanent Exhibition <span class="badge res-needed">TOUR</span></h3>
             <p>The museum's core journey across Floors 1–3, visited with a docent — a lifelike humanoid,
             a giant robotic eye that follows you around, an electronic garden in bloom, and hands-on stations
-            like Self-driving Level 3 and the Trolley Dilemma. English docent tour every Wednesday at 15:40;
-            an English audio guide (MP3) will be provided for Korean-guided sessions.</p>
+            like Self-driving Level 3 and the Trolley Dilemma.
+            <% if (enTours.available && enTours.perType.permanent) { %>English docent tour <%= enTours.perType.permanent %>; an <% } %>English audio guide (MP3) will be provided for Korean-guided sessions.</p>
             <div class="ex-facts"><span>Floors 1–3</span><span>6 sessions a day</span><span>40–50 min</span><span>Reservation required</span></div>
           </div>
         </article>
@@ -120,7 +124,7 @@
             <h3>Mystery Playground «RE:PLAY» <span class="badge res-needed">TOUR</span></h3>
             <p>The current special exhibition on 4F, running until Aug 30, 2026 — entertainment technology,
             and how robots and AI are reinventing human play in an immersive world between reality and the virtual.
-            English docent tour every Wednesday at 16:30; an English audio guide (MP3) will be provided
+            <% if (enTours.available && enTours.perType.special) { %>English docent tour <%= enTours.perType.special %>; an <% } %>English audio guide (MP3) will be provided
             for Korean-guided sessions.</p>
             <div class="ex-facts"><span>4F</span><span>Until Aug 30, 2026</span><span>Reservation required</span></div>
           </div>
@@ -232,8 +236,8 @@
       <div class="faq-body">That's exactly what this site is for. Submit a request on our <a href="/reserve">booking page</a> —
       you only need your name and email. Museum staff review each request and send a confirmation email.</div></details>
     <details class="faq"><summary>Are the tours in English?</summary>
-      <div class="faq-body">Every <strong>Wednesday</strong> a professional English-speaking docent leads free tours:
-      Permanent Exhibition at 15:40 and Special Exhibition at 16:30. All other sessions are guided in Korean,
+      <div class="faq-body"><% if (enTours.available) { %>Free English docent tours run <%= enTours.summary %>.<% } else { %>English docent tours are not currently scheduled.<% } %>
+      All other sessions are guided in Korean,
       and an <strong>English audio guide (MP3)</strong> will be provided so you can listen along on any day.</div></details>
     <details class="faq"><summary>Is it really free?</summary>
       <div class="faq-body">Yes — admission, guided tours and the walk-in experiences are all free of charge.</div></details>

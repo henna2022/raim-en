@@ -3,7 +3,7 @@ const express = require('express');
 const { db } = require('../db');
 const {
   isValidDateStr, todayStr, addDays, closureInfo, sessionsForDate, genCode,
-  getReservationByCode, STATUS_BADGE, getSettings,
+  getReservationByCode, STATUS_BADGE, getSettings, getEnglishTours,
 } = require('../helpers');
 const mailer = require('../mailer');
 const { rateLimit } = require('../ratelimit');
@@ -23,6 +23,7 @@ const reserveLimiter = rateLimit({
       maxDate: addDays(todayStr(), Number(s.booking_window_days || 60)),
       error: 'Too many requests. Please wait a few minutes and try again.',
       form: {},
+      enTours: getEnglishTours(),
     });
   },
 });
@@ -48,7 +49,7 @@ router.get('/', (req, res) => {
   const notices = db.prepare(
     'SELECT * FROM notices WHERE published = 1 ORDER BY pinned DESC, created_at DESC LIMIT 6'
   ).all();
-  res.render('index', { notices, settings: getSettings(), today: todayStr() });
+  res.render('index', { notices, settings: getSettings(), today: todayStr(), enTours: getEnglishTours() });
 });
 
 // ---------- reservation flow ----------
@@ -60,6 +61,7 @@ router.get('/reserve', (req, res) => {
     maxDate: addDays(todayStr(), Number(s.booking_window_days || 60)),
     error: null,
     form: {},
+    enTours: getEnglishTours(),
   });
 });
 
@@ -100,6 +102,7 @@ router.post('/reserve', reserveLimiter, async (req, res) => {
     settings: s, today: todayStr(),
     maxDate: addDays(todayStr(), Number(s.booking_window_days || 60)),
     error: msg, form,
+    enTours: getEnglishTours(),
   });
 
   if (!isValidDateStr(form.date)) return fail('Please pick a valid date.');

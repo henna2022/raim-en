@@ -66,6 +66,52 @@ function sessionsForDate(dateStr) {
   return { closed: false, reason: '', sessions };
 }
 
+// ---------- English tour single-source-of-truth (A5) ----------
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+// weekdays CSV (e.g. '2,3') -> 'Tuesday & Wednesday'
+function weekdayLabel(weekdaysCsv) {
+  return weekdaysCsv.split(',').map(n => WEEKDAY_NAMES[Number(n)]).join(' & ');
+}
+
+// Reads the active EN-language slots and derives every English-tour phrase the
+// public templates need, so admin schedule edits never leave the site copy stale.
+function getEnglishTours() {
+  const rows = db.prepare(`SELECT * FROM slots WHERE active = 1 AND language = 'en' ORDER BY start_time`).all();
+  if (rows.length === 0) {
+    return { available: false, chip: null, summary: null, perType: { permanent: null, special: null } };
+  }
+
+  const firstWeekdays = rows[0].weekdays;
+  const allSameSingleDay = rows.every(r => r.weekdays === firstWeekdays) && firstWeekdays.split(',').length === 1;
+  const chip = allSameSingleDay
+    ? `English tours every ${WEEKDAY_NAMES[Number(firstWeekdays)]}`
+    : 'English docent tours available';
+
+  const groups = new Map(); // weekday label -> item strings, in start_time order
+  for (const r of rows) {
+    const label = weekdayLabel(r.weekdays);
+    const item = `${r.tour_type === 'permanent' ? 'Permanent Exhibition' : 'Special Exhibition'} ${r.start_time}`;
+    if (!groups.has(label)) groups.set(label, []);
+    groups.get(label).push(item);
+  }
+  const groupTexts = [...groups.entries()].map(([label, items]) => `${label}: ${items.join(' · ')}`);
+  const summary = groupTexts.length === 1 ? `Every ${groupTexts[0]}` : groupTexts.join('; ');
+
+  function firstOfType(type) {
+    const match = rows.find(r => r.tour_type === type); // rows already ordered by start_time asc
+    if (!match) return null;
+    return `every ${weekdayLabel(match.weekdays)} at ${match.start_time}`;
+  }
+
+  return {
+    available: true,
+    chip,
+    summary,
+    perType: { permanent: firstOfType('permanent'), special: firstOfType('special') },
+  };
+}
+
 function genCode() {
   const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O/1/I/L
   let code = '';
@@ -95,6 +141,6 @@ const STATUS_BADGE = {
 
 module.exports = {
   DATE_RE, isValidDateStr, todayStr, nowHM, weekdayOf, addDays,
-  closureInfo, sessionsForDate, genCode,
+  closureInfo, sessionsForDate, genCode, getEnglishTours,
   getReservation, getReservationByCode, STATUS_BADGE, getSettings,
 };

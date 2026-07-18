@@ -60,6 +60,7 @@
         <td><%= r.start_time %>–<%= r.end_time %> <%= r.tour_type === 'permanent' ? 'Permanent' : 'Special' %>
             <span class="badge badge-<%= r.language %>"><%= r.language.toUpperCase() %></span></td>
         <td><%= r.name %><br><span class="muted"><%= r.email %><%= r.country ? ' · ' + r.country : '' %></span>
+            <% if (r.noshow_count > 0) { %><br><span class="badge badge-noshow">No-shows: <%= r.noshow_count %></span><% } %>
             <% if (r.notes) { %><br><span class="muted">Note: <%= r.notes %></span><% } %></td>
         <td><%= r.party_size %></td>
         <td class="<%= r.age.late ? '' : 'muted' %>">

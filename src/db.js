@@ -103,6 +103,9 @@ function ensureColumn(table, col, ddl) {
 ensureColumn('reservations', 'release_needed', 'release_needed INTEGER NOT NULL DEFAULT 0');
 ensureColumn('reservations', 'released_at', 'released_at TEXT');
 ensureColumn('reservations', 'released_by', 'released_by TEXT');
+// Batch A: tracks whether the day-before-visit reminder email has been sent,
+// so sendReminders() never emails the same reservation twice.
+ensureColumn('reservations', 'reminder_sent', 'reminder_sent INTEGER NOT NULL DEFAULT 0');
 
 // ---------- password helpers ----------
 function hashPassword(password, salt) {
@@ -181,6 +184,7 @@ function seed() {
     reply_sla_text: 'Requests are usually reviewed within 2 business days (the museum is closed on Mondays).',
     staff_notify_email: 'raim@seoulraim.com',
     retention_days: '90',
+    noshow_retention_days: '365',
   };
   const insSetting = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?,?)');
   for (const [k, v] of Object.entries(defaults)) insSetting.run(k, v);
