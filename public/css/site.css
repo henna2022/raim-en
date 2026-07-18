@@ -118,6 +118,7 @@ p.sec-sub { color: var(--ink-soft); margin: 0 0 28px; max-width: 640px; }
   scrollbar-width: none; -ms-overflow-style: none;
 }
 .slides::-webkit-scrollbar { display: none; }
+.slides:focus-visible { outline: 3px solid var(--blue); outline-offset: 4px; border-radius: 8px; }
 .slide {
   flex: 0 0 calc(50% - 8px); scroll-snap-align: start;
   background: var(--gray-card); border-radius: var(--radius); overflow: hidden;

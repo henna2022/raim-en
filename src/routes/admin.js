@@ -130,19 +130,37 @@ router.get('/', (req, res) => {
 });
 
 // ---------- reservations ----------
+const RESERVATIONS_PAGE_SIZE = 50;
 router.get('/reservations', (req, res) => {
   const status = String(req.query.status || '');
   const date = String(req.query.date || '');
-  let sql = `SELECT r.*, s.tour_type, s.start_time, s.end_time, s.language,
-             (SELECT COUNT(*) FROM reservations n WHERE n.email = r.email AND n.status = 'no_show') AS noshow_count
-             FROM reservations r JOIN slots s ON s.id = r.slot_id WHERE 1=1`;
+  const q = String(req.query.q || '').trim();
+  const pageNum = Number.parseInt(req.query.page, 10);
+  const page = Number.isInteger(pageNum) && pageNum >= 1 ? pageNum : 1;
+
+  let where = ' WHERE 1=1';
   const params = [];
-  if (status && STATUS_BADGE[status]) { sql += ' AND r.status = ?'; params.push(status); }
-  if (DATE_RE.test(date)) { sql += ' AND r.visit_date = ?'; params.push(date); }
-  sql += ' ORDER BY r.visit_date DESC, s.start_time, r.created_at DESC LIMIT 500';
-  const rows = db.prepare(sql).all(...params);
+  if (status && STATUS_BADGE[status]) { where += ' AND r.status = ?'; params.push(status); }
+  if (DATE_RE.test(date)) { where += ' AND r.visit_date = ?'; params.push(date); }
+  if (q) {
+    where += ' AND (r.name LIKE ? OR r.email LIKE ? OR r.code LIKE ?)';
+    const like = `%${q}%`;
+    params.push(like, like, like);
+  }
+
+  const total = db.prepare(
+    `SELECT COUNT(*) AS c FROM reservations r JOIN slots s ON s.id = r.slot_id${where}`
+  ).get(...params).c;
+  const totalPages = Math.max(1, Math.ceil(total / RESERVATIONS_PAGE_SIZE));
+  const offset = (page - 1) * RESERVATIONS_PAGE_SIZE;
+
+  const sql = `SELECT r.*, s.tour_type, s.start_time, s.end_time, s.language,
+             (SELECT COUNT(*) FROM reservations n WHERE n.email = r.email AND n.status = 'no_show') AS noshow_count
+             FROM reservations r JOIN slots s ON s.id = r.slot_id${where}
+             ORDER BY r.visit_date DESC, s.start_time, r.created_at DESC LIMIT ? OFFSET ?`;
+  const rows = db.prepare(sql).all(...params, RESERVATIONS_PAGE_SIZE, offset);
   res.render('admin/reservations', {
-    staff: req.session.staff, rows, status, date, STATUS_BADGE,
+    staff: req.session.staff, rows, status, date, q, page, totalPages, total, STATUS_BADGE,
   });
 });
 
@@ -203,7 +221,11 @@ router.post('/reservations/:id/:action', async (req, res) => {
 
   const updated = getReservation(r.id);
   if (req.params.action === 'confirm') {
-    await mailer.sendMail(updated.email, `[Seoul RAIM] Reservation confirmed — ${updated.code}`, mailer.confirmedEmail(updated));
+    const ics = mailer.icsForReservation(updated);
+    await mailer.sendMail(
+      updated.email, `[Seoul RAIM] Reservation confirmed — ${updated.code}`, mailer.confirmedEmail(updated),
+      [{ filename: 'raim-visit.ics', content: ics, contentType: 'text/calendar' }]
+    );
   } else if (req.params.action === 'decline') {
     await mailer.sendMail(updated.email, `[Seoul RAIM] About your request — ${updated.code}`, mailer.declinedEmail(updated));
   } else if (req.params.action === 'cancel') {

@@ -16,7 +16,7 @@ if (process.env.SMTP_HOST) {
   });
 }
 
-async function sendMail(to, subject, html) {
+async function sendMail(to, subject, html, attachments) {
   let sent = 0;
   let error = '';
   if (transporter) {
@@ -24,6 +24,7 @@ async function sendMail(to, subject, html) {
       await transporter.sendMail({
         from: process.env.SMTP_FROM || getSettings().contact_email,
         to, subject, html,
+        ...(attachments ? { attachments } : {}),
       });
       sent = 1;
     } catch (err) {
@@ -124,6 +125,41 @@ function cancelledEmail(r) {
     submit a new request on our booking page.</p>`);
 }
 
+// ---------- .ics calendar attachment (B7) ----------
+// r.visit_date is 'YYYY-MM-DD', r.start_time/r.end_time are 'HH:MM', all KST
+// (the museum's local timezone). ICS DTSTART/DTEND/DTSTAMP must be UTC ("Z"),
+// so we build the KST wall-clock time as an ISO string with a +09:00 offset
+// and let the Date object do the UTC conversion (handles the day boundary —
+// e.g. 09:40 KST on 2026-08-01 is 00:40 UTC the SAME day, but an early
+// morning KST start before 09:00 would roll back to the previous UTC day).
+function toIcsUtc(dateStr, timeStr) {
+  const d = new Date(`${dateStr}T${timeStr}:00+09:00`);
+  return d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+}
+
+function icsForReservation(r) {
+  const now = new Date();
+  const nowUtc = now.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+  const type = r.tour_type === 'permanent' ? 'Permanent' : 'Special';
+  const s = getSettings();
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Seoul RAIM//EN',
+    'BEGIN:VEVENT',
+    `UID:${r.code}@raim-en`,
+    `DTSTAMP:${nowUtc}`,
+    `DTSTART:${toIcsUtc(r.visit_date, r.start_time)}`,
+    `DTEND:${toIcsUtc(r.visit_date, r.end_time)}`,
+    `SUMMARY:Seoul Robot & AI Museum — ${type} Exhibition Tour`,
+    `LOCATION:${s.address_en}`,
+    `DESCRIPTION:Reservation ${r.code}. Party of ${r.party_size}. Free admission — arrive 10 minutes early and check in at the 1F information desk.`,
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ];
+  return lines.join('\r\n') + '\r\n';
+}
+
 // ---------- staff notifications (internal, Korean) ----------
 const BASE_URL = process.env.BASE_URL || 'http://localhost:4310';
 
@@ -183,6 +219,6 @@ async function notifyStaff(subject, html) {
 
 module.exports = {
   sendMail, requestReceivedEmail, confirmedEmail, declinedEmail, cancelledEmail, reminderEmail,
-  staffNewRequestEmail, staffReleaseEmail, notifyStaff,
+  staffNewRequestEmail, staffReleaseEmail, notifyStaff, icsForReservation,
   smtpConfigured: !!transporter,
 };

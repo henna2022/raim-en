@@ -17,6 +17,10 @@
       <label class="f">Visit date</label>
       <input type="date" name="date" value="<%= date %>">
     </div>
+    <div>
+      <label class="f">Search</label>
+      <input type="text" name="q" value="<%= q %>" placeholder="Name, email or code">
+    </div>
     <div><button class="btn" type="submit">Filter</button></div>
     <div><a class="btn gray" href="/admin/reservations">Reset</a></div>
     <div style="margin-left:auto;"><a class="btn outline" href="/admin/reservations.csv">⬇ Export all (CSV)</a></div>
@@ -45,7 +49,19 @@
       </tr>
     <% } %>
   </table>
-  <p class="muted">Showing up to 500 rows, newest visit dates first.</p>
+  <% function pageLink(p) {
+       const params = new URLSearchParams();
+       if (status) params.set('status', status);
+       if (date) params.set('date', date);
+       if (q) params.set('q', q);
+       params.set('page', p);
+       return '/admin/reservations?' + params.toString();
+     } %>
+  <div class="row" style="margin-top:14px;align-items:center;">
+    <% if (page > 1) { %><a class="btn gray" href="<%= pageLink(page - 1) %>">Prev</a><% } %>
+    <span class="muted">Page <%= page %> of <%= totalPages %></span>
+    <% if (page < totalPages) { %><a class="btn gray" href="<%= pageLink(page + 1) %>">Next</a><% } %>
+  </div>
   <% } %>
 </div>
 
