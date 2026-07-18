@@ -1,0 +1,9 @@
+services:
+  raim-en:
+    build: .
+    ports:
+      - "4310:4310"
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
