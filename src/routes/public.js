@@ -146,7 +146,11 @@ router.post('/reserve', reserveLimiter, async (req, res) => {
     mailer.staffNewRequestEmail(r)
   );
 
-  res.redirect(`/booking?code=${encodeURIComponent(code)}&email=${encodeURIComponent(form.email)}&new=1`);
+  // Redirect with the code only — never the email. An email in the URL would be
+  // written to web-server access logs and browser history (a PIPA concern for an
+  // official site). The visitor's code is shown on the landing banner so they can
+  // save it; looking up the full booking still requires code + email together.
+  res.redirect(`/booking?code=${encodeURIComponent(code)}&new=1`);
 });
 
 // ---------- booking status / cancel ----------

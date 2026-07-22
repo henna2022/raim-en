@@ -29,7 +29,8 @@
 <div class="wrap status-card">
   <% if (isNew) { %>
     <div class="status-banner st-confirmed">Your request was submitted. A “request received” email is on its way —
-    staff will review it and confirm by email.</div>
+    staff will review it and confirm by email.
+    <% if (code) { %><br>Your reservation code is <strong><%= code %></strong> — save it to check your booking later.<% } %></div>
   <% } %>
   <% if (cancelled) { %>
     <div class="status-banner st-cancelled">Your reservation has been cancelled. Thank you for letting us know.</div>
