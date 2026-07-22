@@ -78,6 +78,18 @@ app.use(session({
 }));
 app.use(csrfMiddleware);
 
+// Absolute site origin for OG/canonical tags — social & messaging scrapers
+// can't resolve a relative og:image. Prefer an explicit BASE_URL; otherwise
+// derive from the request (req.protocol honours the reverse proxy when
+// TRUST_PROXY=1 is set).
+app.use((req, res, next) => {
+  res.locals.siteOrigin = (process.env.BASE_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+  // Canonical path only — never the query string (the /booking URL carries the
+  // reservation code + email, which must not end up in canonical/og:url tags).
+  res.locals.canonicalPath = req.path;
+  next();
+});
+
 app.use('/', require('./routes/public'));
 app.use('/admin', require('./routes/admin'));
 

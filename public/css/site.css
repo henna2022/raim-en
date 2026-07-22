@@ -1,7 +1,7 @@
 :root {
   --ink: #191f28;
   --ink-soft: #4e5968;
-  --ink-faint: #8b95a1;
+  --ink-faint: #69727e; /* WCAG AA (4.5:1) on white and gray cards — used for small helper text */
   --bg: #ffffff;
   --gray-card: #f9fafb;
   --gray-card-2: #f2f4f6;
