@@ -29,7 +29,35 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '..', 'views'));
 app.disable('x-powered-by');
 
-app.use(express.urlencoded({ extended: false }));
+// Security headers (hand-rolled — no helmet dependency). The CSP keeps
+// 'unsafe-inline' because the pages use small inline <script>/onclick handlers;
+// stored-XSS is already blocked by EJS/email escaping, and this CSP still
+// forbids loading scripts, frames or objects from any other origin.
+// Referrer-Policy: same-origin matters here — the /booking URL carries the
+// reservation code + email, and the page links out to external map sites in
+// new tabs, so the referrer must not leak those query params off-origin.
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'same-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), interest-cohort=()');
+  res.setHeader('Content-Security-Policy', [
+    "default-src 'self'",
+    "img-src 'self' data:",
+    "style-src 'self' 'unsafe-inline'",
+    "script-src 'self' 'unsafe-inline'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ].join('; '));
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  next();
+});
+
+app.use(express.urlencoded({ extended: false, limit: '32kb' }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use(session({
   name: 'raim.sid',
@@ -55,8 +83,11 @@ app.use('/admin', require('./routes/admin'));
 
 app.use((req, res) => res.status(404).render('notfound'));
 app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
-  console.error(err);
-  res.status(500).send('Internal server error');
+  // Client errors (oversized/malformed body, bad JSON…) carry their own status;
+  // only 5xx is a real server fault worth logging as an error.
+  const status = err.status || err.statusCode || 500;
+  if (status >= 500) console.error(err);
+  res.status(status).send(status >= 500 ? 'Internal server error' : 'Bad request');
 });
 
 module.exports = app;
