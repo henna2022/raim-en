@@ -17,7 +17,7 @@
 <body>
 <%- include('partials/nav') %>
 
-<div class="page-head">
+<main id="main" tabindex="-1"><div class="page-head">
   <div class="wrap">
     <h1>Book a Guided Tour</h1>
     <p>Free of charge. Pick a date and session, leave your name and email, and our staff will
@@ -107,6 +107,7 @@
   </aside>
 </div>
 
+</main>
 <%- include('partials/foot') %>
 <script>
   const preselect = <%- JSON.stringify(Number(form.slot_id) || null) %>;

@@ -22,6 +22,14 @@
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+/* Accessibility: skip-to-content link, visible only on keyboard focus */
+.skip-link {
+  position: absolute; left: 12px; top: -48px; z-index: 100;
+  background: var(--blue); color: #fff; padding: 10px 16px; border-radius: 10px;
+  font-weight: 700; font-size: 14px; transition: top .15s;
+}
+.skip-link:focus { top: 12px; text-decoration: none; outline: 3px solid #fff; }
+#main:focus { outline: none; }
 body {
   margin: 0; color: var(--ink); background: var(--bg);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
