@@ -23,8 +23,8 @@
     </div>
     <div><button class="btn" type="submit">Filter</button></div>
     <div><a class="btn gray" href="/admin/reservations">Reset</a></div>
-    <div style="margin-left:auto;"><a class="btn outline" href="/admin/reservations.csv">⬇ Export all (CSV)</a></div>
-    <% if (date) { %><div><a class="btn gray" href="/admin/day/<%= date %>/print" target="_blank">🖨 Print desk list</a></div><% } %>
+    <div style="margin-left:auto;"><a class="btn outline" href="/admin/reservations.csv">Export all (CSV)</a></div>
+    <% if (date) { %><div><a class="btn gray" href="/admin/day/<%= date %>/print" target="_blank">Print desk list</a></div><% } %>
   </form>
 </div>
 
@@ -40,7 +40,7 @@
             <span class="badge badge-<%= r.language %>"><%= r.language.toUpperCase() %></span></td>
         <td><%= r.name %><br><span class="muted"><%= r.email %><%= r.country ? ' · ' + r.country : '' %></span>
             <% if (r.noshow_count > 0) { %><br><span class="badge badge-noshow">No-shows: <%= r.noshow_count %></span><% } %>
-            <% if (r.notes) { %><br><span class="muted">📝 <%= r.notes %></span><% } %></td>
+            <% if (r.notes) { %><br><span class="muted">Note: <%= r.notes %></span><% } %></td>
         <td><%= r.party_size %></td>
         <td><span class="badge <%= cls %>"><%= label %></span>
             <% if (r.status === 'declined' && r.decline_reason) { %><br><span class="muted"><%= r.decline_reason %></span><% } %></td>

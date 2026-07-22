@@ -10,7 +10,13 @@
 <body>
 <div class="login-wrap">
   <div class="panel">
-    <h1>🤖 RAIM Admin</h1>
+    <div class="brandmark" aria-hidden="true">
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="34" cy="42" r="9" fill="#fff"/><circle cx="66" cy="42" r="9" fill="#fff"/>
+        <line x1="32" y1="68" x2="68" y2="68" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <h1>RAIM Admin</h1>
     <p class="muted" style="text-align:center;">Staff sign-in for the foreign visitor reservation system.</p>
     <% if (error) { %><div class="flash err"><%= error %></div><% } %>
     <form method="POST" action="/admin/login">

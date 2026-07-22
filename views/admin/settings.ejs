@@ -31,9 +31,9 @@
 <div class="panel">
   <h2 style="margin-top:0;">Email delivery</h2>
   <% if (smtpConfigured) { %>
-    <p>✅ SMTP is configured — emails are sent for real (and logged under <a href="/admin/emails">Emails</a>).</p>
+    <p>SMTP is configured — emails are sent for real (and logged under <a href="/admin/emails">Emails</a>).</p>
   <% } else { %>
-    <p>📮 SMTP is <strong>not configured</strong>. Emails are stored in the <a href="/admin/emails">Outbox</a> for preview only.</p>
+    <p>SMTP is <strong>not configured</strong>. Emails are stored in the <a href="/admin/emails">Outbox</a> for preview only.</p>
     <p class="muted">To send real mail, set these environment variables before starting the server:<br>
     <code>SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM</code> (see README.md).</p>
   <% } %>

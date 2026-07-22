@@ -19,7 +19,7 @@ Keep them visitor-relevant: closures, special openings, parking, events.</p>
           <option value="general">General</option><option value="hours">Hours/Closure</option>
           <option value="parking">Parking</option><option value="event">Event</option>
         </select></div>
-      <div><label class="f">&nbsp;</label><label style="font-size:13px;"><input type="checkbox" name="pinned"> 📌 pin to top</label></div>
+      <div><label class="f">&nbsp;</label><label style="font-size:13px;"><input type="checkbox" name="pinned"> pin to top</label></div>
       <div><label class="f">&nbsp;</label><label style="font-size:13px;"><input type="checkbox" name="published" checked> published</label></div>
       <div><button class="btn" type="submit">Add notice</button></div>
     </div>
@@ -31,7 +31,7 @@ Keep them visitor-relevant: closures, special openings, parking, events.</p>
     <form method="POST" action="/admin/notices/<%= n.id %>">
       <input type="hidden" name="_csrf" value="<%= csrf %>">
       <div class="row" style="align-items:center;">
-        <strong style="flex:1;"><% if (n.pinned) { %>📌 <% } %><%= n.title %></strong>
+        <strong style="flex:1;"><% if (n.pinned) { %><span class="badge badge-attended" style="margin-right:6px;">PINNED</span><% } %><%= n.title %></strong>
         <span class="badge <%= n.published ? 'badge-confirmed' : 'badge-cancelled' %>"><%= n.published ? 'PUBLISHED' : 'HIDDEN' %></span>
         <span class="muted"><%= n.created_at.slice(0, 10) %></span>
       </div>

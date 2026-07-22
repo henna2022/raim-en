@@ -2,7 +2,7 @@
 
 <h1>Dashboard</h1>
 <% if (!smtpConfigured) { %>
-  <div class="flash warn">📮 SMTP is not configured — confirmation emails are saved to the
+  <div class="flash warn">SMTP is not configured — confirmation emails are saved to the
   <a href="/admin/emails">Outbox</a> instead of being sent. Set SMTP_* environment variables to enable real sending.</div>
 <% } %>
 
@@ -19,8 +19,8 @@
 </div>
 
 <% if (releaseQueue.length > 0) { %>
-<div class="panel" style="border:1.5px solid #fecaca;">
-  <h2 style="margin-top:0;color:#b91c1c;">Yeyak release queue — seats to unblock</h2>
+<div class="panel" style="border:1.5px solid #f6cccc;">
+  <h2 style="margin-top:0;color:#d22030;">Yeyak release queue — seats to unblock</h2>
   <p class="muted">These confirmed reservations were cancelled. Release the blocked seats in the
   <strong>yeyak admin</strong> (관리자 예약), then mark done here.</p>
   <table>
@@ -50,7 +50,7 @@
   <h2 style="margin-top:0;">Pending requests — review &amp; confirm</h2>
   <p class="muted">Workflow: ① check seat availability for the session → ② block the seats in the
   <strong>yeyak admin</strong> (관리자 예약) → ③ confirm here to send the visitor their confirmation email.</p>
-  <% if (pending.length === 0) { %><p class="muted">No pending requests. 🎉</p><% } else { %>
+  <% if (pending.length === 0) { %><p class="muted">No pending requests.</p><% } else { %>
   <table>
     <tr><th>Code</th><th>Visit</th><th>Session</th><th>Visitor</th><th>Party</th><th>Waiting</th><th>Actions</th></tr>
     <% for (const r of pending) { %>
