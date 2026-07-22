@@ -170,7 +170,13 @@ router.get('/reservations.csv', (req, res) => {
            r.name, r.email, r.country, r.party_size, r.status, r.notes, r.created_at
     FROM reservations r JOIN slots s ON s.id = r.slot_id
     ORDER BY r.visit_date, s.start_time`).all();
-  const esc = v => `"${String(v == null ? '' : v).replaceAll('"', '""')}"`;
+  // Quote cells; prefix =+-@ with ' so Excel/Sheets never execute visitor-typed
+  // text (e.g. a name of "=HYPERLINK(...)") as a formula when staff open the CSV.
+  const esc = v => {
+    let s = String(v == null ? '' : v);
+    if (/^[=+\-@]/.test(s)) s = "'" + s;
+    return `"${s.replaceAll('"', '""')}"`;
+  };
   const header = 'code,visit_date,start_time,end_time,tour_type,language,name,email,country,party_size,status,notes,created_at';
   const body = rows.map(r => [r.code, r.visit_date, r.start_time, r.end_time, r.tour_type, r.language,
     r.name, r.email, r.country, r.party_size, r.status, r.notes, r.created_at].map(esc).join(',')).join('\n');

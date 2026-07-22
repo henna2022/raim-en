@@ -2,6 +2,16 @@
 const nodemailer = require('nodemailer');
 const { db, getSettings } = require('./db');
 
+// Visitor-supplied text (name, notes, country…) must never reach email HTML
+// unescaped — a malicious booking could otherwise inject phishing content into
+// the staff notification inbox. Web views are safe (EJS <%= %> escapes); these
+// hand-built HTML strings are not, so escape here.
+function esc(v) {
+  return String(v == null ? '' : v)
+    .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+}
+
 // SMTP is optional. Without SMTP_HOST configured, every email is stored in the
 // outbox (email_log with sent=0) and can be previewed in Admin > Emails.
 let transporter = null;
@@ -62,7 +72,7 @@ function fmtSlot(r) {
 function requestReceivedEmail(r) {
   const s = getSettings();
   return baseTemplate('Reservation request received', `
-    <p>Dear ${r.name},</p>
+    <p>Dear ${esc(r.name)},</p>
     <p>We have received your reservation request. <strong>This is not a confirmation yet.</strong>
     Our staff will check seat availability and send you a separate confirmation email.</p>
     <table style="width:100%;border-collapse:collapse;font-size:14px;">
@@ -76,7 +86,7 @@ function requestReceivedEmail(r) {
 
 function confirmedEmail(r) {
   return baseTemplate('Your reservation is confirmed', `
-    <p>Dear ${r.name},</p>
+    <p>Dear ${esc(r.name)},</p>
     <p>Your reservation has been <strong style="color:#059669;">confirmed</strong>. We look forward to seeing you!</p>
     <table style="width:100%;border-collapse:collapse;font-size:14px;">
       <tr><td style="padding:6px 0;color:#6b7280;width:130px;">Reservation code</td><td style="font-weight:bold;font-size:16px;">${r.code}</td></tr>
@@ -92,10 +102,10 @@ function confirmedEmail(r) {
 function declinedEmail(r) {
   const s = getSettings();
   return baseTemplate('About your reservation request', `
-    <p>Dear ${r.name},</p>
+    <p>Dear ${esc(r.name)},</p>
     <p>We are sorry — we could not confirm your request <strong>${r.code}</strong> for
     ${fmtSlot(r)}.</p>
-    ${r.decline_reason ? `<p style="background:#fef2f2;border-radius:8px;padding:12px 16px;">Reason: ${r.decline_reason}</p>` : ''}
+    ${r.decline_reason ? `<p style="background:#fef2f2;border-radius:8px;padding:12px 16px;">Reason: ${esc(r.decline_reason)}</p>` : ''}
     <p>Seats for that session may already be fully booked. Please try another date or session —
     you can submit a new request on our booking page at any time.</p>
     <p>Also note that our walk-in areas (Robot &amp; AI Garden and RAIM PLAY) can be
@@ -105,7 +115,7 @@ function declinedEmail(r) {
 
 function reminderEmail(r) {
   return baseTemplate('Your visit is tomorrow', `
-    <p>Dear ${r.name},</p>
+    <p>Dear ${esc(r.name)},</p>
     <p>This is a reminder that your visit is <strong>tomorrow</strong>.</p>
     <table style="width:100%;border-collapse:collapse;font-size:14px;">
       <tr><td style="padding:6px 0;color:#6b7280;width:130px;">Reservation code</td><td style="font-weight:bold;">${r.code}</td></tr>
@@ -119,7 +129,7 @@ function reminderEmail(r) {
 
 function cancelledEmail(r) {
   return baseTemplate('Your reservation was cancelled', `
-    <p>Dear ${r.name},</p>
+    <p>Dear ${esc(r.name)},</p>
     <p>Your reservation <strong>${r.code}</strong> for ${fmtSlot(r)} has been cancelled.</p>
     <p>Thank you for letting us know — we hope to see you another day. You are always welcome to
     submit a new request on our booking page.</p>`);
@@ -137,6 +147,14 @@ function toIcsUtc(dateStr, timeStr) {
   return d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
 }
 
+// RFC 5545 TEXT escaping — commas/semicolons are structural in ICS, and the
+// museum address contains commas, so unescaped values break some calendar apps.
+function icsText(v) {
+  return String(v == null ? '' : v)
+    .replaceAll('\\', '\\\\').replaceAll(';', '\\;').replaceAll(',', '\\,')
+    .replaceAll('\r\n', '\\n').replaceAll('\n', '\\n');
+}
+
 function icsForReservation(r) {
   const now = new Date();
   const nowUtc = now.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
@@ -151,9 +169,9 @@ function icsForReservation(r) {
     `DTSTAMP:${nowUtc}`,
     `DTSTART:${toIcsUtc(r.visit_date, r.start_time)}`,
     `DTEND:${toIcsUtc(r.visit_date, r.end_time)}`,
-    `SUMMARY:Seoul Robot & AI Museum — ${type} Exhibition Tour`,
-    `LOCATION:${s.address_en}`,
-    `DESCRIPTION:Reservation ${r.code}. Party of ${r.party_size}. Free admission — arrive 10 minutes early and check in at the 1F information desk.`,
+    `SUMMARY:${icsText(`Seoul Robot & AI Museum — ${type} Exhibition Tour`)}`,
+    `LOCATION:${icsText(s.address_en)}`,
+    `DESCRIPTION:${icsText(`Reservation ${r.code}. Party of ${r.party_size}. Free admission — arrive 10 minutes early and check in at the 1F information desk.`)}`,
     'END:VEVENT',
     'END:VCALENDAR',
   ];
@@ -185,9 +203,9 @@ function staffInfoTable(r) {
   return `<table style="width:100%;border-collapse:collapse;font-size:14px;">
     <tr><td style="padding:5px 0;color:#6b7280;width:90px;">코드</td><td style="font-weight:bold;">${r.code}</td></tr>
     <tr><td style="padding:5px 0;color:#6b7280;">회차</td><td>${staffKoSlot(r)}</td></tr>
-    <tr><td style="padding:5px 0;color:#6b7280;">신청자</td><td>${r.name} (${r.email}${r.country ? ', ' + r.country : ''})</td></tr>
+    <tr><td style="padding:5px 0;color:#6b7280;">신청자</td><td>${esc(r.name)} (${esc(r.email)}${r.country ? ', ' + esc(r.country) : ''})</td></tr>
     <tr><td style="padding:5px 0;color:#6b7280;">인원</td><td>${r.party_size}명</td></tr>
-    ${r.notes ? `<tr><td style="padding:5px 0;color:#6b7280;">메모</td><td>${r.notes}</td></tr>` : ''}
+    ${r.notes ? `<tr><td style="padding:5px 0;color:#6b7280;">메모</td><td>${esc(r.notes)}</td></tr>` : ''}
   </table>`;
 }
 
