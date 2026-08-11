@@ -14,15 +14,20 @@
   <% if (releaseQueue.length > 0) { %>
     <span class="stat late-stat"><span class="n"><%= releaseQueue.length %></span><br><span class="l">Yeyak seats to release</span></span>
   <% } %>
+  <% if (waitlist.length > 0) { %>
+    <span class="stat"><span class="n"><%= waitlist.length %></span><br><span class="l">Waitlisted</span></span>
+  <% } %>
   <span class="stat"><span class="n"><%= todays.length %></span><br><span class="l">Visitors today (<%= today %>)</span></span>
   <span class="stat"><a class="btn gray" href="/admin/day/<%= today %>/print" target="_blank">Print today's desk list</a></span>
 </div>
 
 <% if (releaseQueue.length > 0) { %>
 <div class="panel" style="border:1.5px solid #f6cccc;">
-  <h2 style="margin-top:0;color:#d22030;">Yeyak release queue — seats to unblock</h2>
-  <p class="muted">These confirmed reservations were cancelled. Release the blocked seats in the
-  <strong>yeyak admin</strong> (관리자 예약), then mark done here.</p>
+  <h2 style="margin-top:0;color:#d22030;">Yeyak release queue — blocked seats to resolve</h2>
+  <p class="muted">These confirmed reservations were cancelled, but their seats are still blocked in the
+  <strong>yeyak admin</strong> (관리자 예약). For each one: promote waitlisted requests into the seats
+  (Waitlist panel below), release the rest in yeyak, then mark it resolved here. If seats end up free
+  again, also remove the session's sold-out mark under Schedule.</p>
   <table>
     <tr><th>Code</th><th>Visit</th><th>Session</th><th>Party</th><th>Cancelled</th><th></th></tr>
     <% for (const r of releaseQueue) { %>
@@ -31,13 +36,15 @@
         <td><%= r.visit_date %> <span class="muted"><%= r.start_time %></span></td>
         <td><%= r.tour_type === 'permanent' ? 'Permanent' : 'Special' %>
             <span class="badge badge-<%= r.language %>"><%= r.language.toUpperCase() %></span></td>
-        <td><%= r.party_size %></td>
+        <td><%= r.party_size %>
+          <% if (r.waitlist_count > 0) { %><br><span class="badge badge-waitlisted" title="Consider promoting a waitlisted request into these blocked seats before releasing them."><%= r.waitlist_count %> waitlisted ↓</span><% } %>
+        </td>
         <td class="muted"><%= r.decided_at ? r.decided_at.slice(0, 16) : '' %> (<%= r.decided_by %>)</td>
         <td>
           <form method="POST" action="/admin/reservations/<%= r.id %>/released"
-                onsubmit="return confirm('yeyak에서 <%= r.party_size %>석을 해제했습니까?');">
+                onsubmit="return confirm('이 예약의 차단 좌석 <%= r.party_size %>석 처리(대기자 승격 또는 yeyak 해제)를 완료했습니까?<%= r.waitlist_count > 0 ? ' (이 회차 대기자 ' + r.waitlist_count + '명 — 승격을 먼저 검토하세요)' : '' %>');">
             <input type="hidden" name="_csrf" value="<%= csrf %>">
-            <button class="btn sm green" type="submit">Seats released</button>
+            <button class="btn sm green" type="submit">Resolved</button>
           </form>
         </td>
       </tr>
@@ -88,7 +95,8 @@
           · <%= g.tour_type === 'permanent' ? 'Permanent' : 'Special' %>
           <span class="badge badge-<%= g.language %>"><%= g.language.toUpperCase() %></span>
           <% if (g.late) { %><span class="badge badge-declined">OVER <%= slaHours %>H</span><% } %>
-          <% if (g.soldout) { %><span class="badge badge-noshow" title="This session is marked fully booked — decline these requests instead of blocking more seats.">SOLD OUT</span><% } %>
+          <% if (g.soldout) { %><span class="badge badge-noshow" title="This session is marked fully booked — waitlist or decline these requests instead of blocking more seats.">SOLD OUT</span><% } %>
+          <% if (g.waitlist_count > 0) { %><span class="badge badge-waitlisted" title="This session has older waitlisted requests (see the Waitlist panel below). They asked first — promote them before confirming newer pending requests."><%= g.waitlist_count %> WAITLISTED FIRST ↓</span><% } %>
         </div>
         <div class="res-group-tools">
           <span class="muted"><span class="sel-count"><%= g.requests.length %></span> request(s) ·
@@ -200,6 +208,32 @@
   });
 })();
 </script>
+
+<% if (waitlist.length > 0) { %>
+<div class="panel">
+  <h2 style="margin-top:0;">Waitlist — promote when seats free up</h2>
+  <p class="muted">First come, first served within each session (#1 first). When a confirmed booking for the same
+  session is cancelled, its blocked yeyak seats can go straight to the next person here — confirm them instead of
+  releasing the seats.</p>
+  <table>
+    <tr><th>#</th><th>Visit</th><th>Session</th><th>Code</th><th>Visitor</th><th>Party</th><th>Waiting</th><th>Actions</th></tr>
+    <% for (const r of waitlist) { %>
+      <tr>
+        <td class="muted">#<%= r.pos %></td>
+        <td><%= r.visit_date %></td>
+        <td><%= r.start_time %>–<%= r.end_time %> <%= r.tour_type === 'permanent' ? 'Permanent' : 'Special' %>
+            <span class="badge badge-<%= r.language %>"><%= r.language.toUpperCase() %></span></td>
+        <td><strong><%= r.code %></strong></td>
+        <td><%= r.name %><br><span class="muted"><%= r.email %><%= r.country ? ' · ' + r.country : '' %></span>
+            <% if (r.notes) { %><br><span class="muted">Note: <%= r.notes %></span><% } %></td>
+        <td><%= r.party_size %></td>
+        <td class="muted"><%= r.age.label %></td>
+        <td><%- include('partials/res_actions', { r }) %></td>
+      </tr>
+    <% } %>
+  </table>
+</div>
+<% } %>
 
 <div class="panel">
   <h2 style="margin-top:0;">Today's confirmed visitors</h2>

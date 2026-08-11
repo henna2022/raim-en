@@ -53,6 +53,7 @@
       <div class="status-banner st-<%= r.status %>">
         Status: <%= label %>
         <% if (r.status === 'pending') { %> — staff are reviewing your request; you'll get an email once it's decided.<% } %>
+        <% if (r.status === 'waitlisted') { %> — the session is currently full. If seats free up, we'll email you a confirmation automatically.<% } %>
         <% if (r.status === 'confirmed') { %> — see you at the museum!<% } %>
         <% if (r.status === 'declined') { %><%= r.decline_reason ? ' — ' + r.decline_reason : '' %><% } %>
       </div>
@@ -66,13 +67,13 @@
         <tr><td>Name</td><td><%= r.name %></td></tr>
         <tr><td>Party size</td><td><%= r.party_size %></td></tr>
       </table>
-      <% if (['pending','confirmed'].includes(r.status)) { %>
+      <% if (['pending','confirmed','waitlisted'].includes(r.status)) { %>
         <form method="POST" action="/booking/cancel" style="margin-top:20px;"
-              onsubmit="return confirm('Cancel this reservation?');">
+              onsubmit="return confirm('<%= r.status === 'waitlisted' ? 'Leave the waitlist?' : 'Cancel this reservation?' %>');">
           <input type="hidden" name="_csrf" value="<%= csrf %>">
           <input type="hidden" name="code" value="<%= r.code %>">
           <input type="hidden" name="email" value="<%= r.email %>">
-          <button class="btn btn-danger" type="submit">Cancel this reservation</button>
+          <button class="btn btn-danger" type="submit"><%= r.status === 'waitlisted' ? 'Leave the waitlist' : 'Cancel this reservation' %></button>
         </form>
       <% } %>
       <% if (r.status === 'confirmed') { %>

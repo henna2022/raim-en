@@ -140,6 +140,7 @@ function getReservationByCode(code) {
 
 const STATUS_BADGE = {
   pending: ['Pending review', 'badge-pending'],
+  waitlisted: ['Waitlisted', 'badge-waitlisted'],
   confirmed: ['Confirmed', 'badge-confirmed'],
   declined: ['Declined', 'badge-declined'],
   cancelled: ['Cancelled', 'badge-cancelled'],

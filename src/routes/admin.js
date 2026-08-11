@@ -133,9 +133,15 @@ function groupPending(pending) {
     if (r.age.late) g.late = true;
   }
   // Flag groups whose session is already marked fully booked — staff should be
-  // declining these, not blocking more yeyak seats.
+  // waitlisting or declining these, not blocking more yeyak seats.
   const soldoutCheck = db.prepare('SELECT 1 FROM soldout WHERE date = ? AND slot_id = ?');
-  for (const g of groups.values()) g.soldout = !!soldoutCheck.get(g.visit_date, g.slot_id);
+  // Older waitlisted requests outrank newer pending ones for the same session —
+  // surface them on the group so a batch confirm doesn't silently jump the FIFO.
+  const waitlistCheck = db.prepare(`SELECT COUNT(*) AS c FROM reservations WHERE status = 'waitlisted' AND visit_date = ? AND slot_id = ?`);
+  for (const g of groups.values()) {
+    g.soldout = !!soldoutCheck.get(g.visit_date, g.slot_id);
+    g.waitlist_count = waitlistCheck.get(g.visit_date, g.slot_id).c;
+  }
   // SLA-breached groups surface first (the "Over 48h — reply now" tile points
   // at the top of the list); the rest run in visit-date order.
   return [...groups.values()].sort((a, b) => {
@@ -159,10 +165,28 @@ router.get('/', (req, res) => {
     FROM reservations r JOIN slots s ON s.id = r.slot_id
     WHERE r.visit_date = ? AND r.status IN ('confirmed','attended','no_show')
     ORDER BY s.start_time`).all(today);
+  // waitlist_count: cancelled-but-still-blocked seats should be offered to
+  // waitlisted requests of the same session before being released in yeyak.
   const releaseQueue = db.prepare(`
-    SELECT r.*, s.tour_type, s.start_time, s.end_time, s.language
+    SELECT r.*, s.tour_type, s.start_time, s.end_time, s.language,
+           (SELECT COUNT(*) FROM reservations w
+             WHERE w.status = 'waitlisted' AND w.visit_date = r.visit_date AND w.slot_id = r.slot_id) AS waitlist_count
     FROM reservations r JOIN slots s ON s.id = r.slot_id
     WHERE r.release_needed = 1 ORDER BY r.decided_at`).all();
+  // FIFO within each session: created_at order is the promotion priority.
+  const waitlist = db.prepare(`
+    SELECT r.*, s.tour_type, s.start_time, s.end_time, s.language
+    FROM reservations r JOIN slots s ON s.id = r.slot_id
+    WHERE r.status = 'waitlisted' AND r.visit_date >= ?
+    ORDER BY r.visit_date, s.start_time, r.created_at`).all(today)
+    .map(r => ({ ...r, age: ageInfo(r.created_at) }));
+  const posBySession = new Map();
+  for (const w of waitlist) {
+    const key = `${w.visit_date}|${w.slot_id}`;
+    const pos = (posBySession.get(key) || 0) + 1;
+    posBySession.set(key, pos);
+    w.pos = pos;
+  }
   const batchDone = {
     confirmed: Math.max(0, Number.parseInt(req.query.confirmed, 10) || 0),
     skipped: Math.max(0, Number.parseInt(req.query.skipped, 10) || 0),
@@ -170,7 +194,7 @@ router.get('/', (req, res) => {
   };
   res.render('admin/dashboard', {
     staff: req.session.staff, pending, pendingGroups: groupPending(pending),
-    todays, releaseQueue, today, batchDone,
+    todays, releaseQueue, waitlist, today, batchDone,
     lateCount: pending.filter(p => p.age.late).length, slaHours: SLA_HOURS,
     smtpConfigured: mailer.smtpConfigured, STATUS_BADGE, settings: getSettings(),
   });
@@ -294,12 +318,13 @@ router.post('/reservations/batch-confirm', async (req, res) => {
 });
 
 const TRANSITIONS = {
-  confirm: { from: ['pending'], to: 'confirmed' },
-  decline: { from: ['pending'], to: 'declined' },
-  cancel: { from: ['pending', 'confirmed'], to: 'cancelled' },
+  confirm: { from: ['pending', 'waitlisted'], to: 'confirmed' },
+  waitlist: { from: ['pending'], to: 'waitlisted' },
+  decline: { from: ['pending', 'waitlisted'], to: 'declined' },
+  cancel: { from: ['pending', 'confirmed', 'waitlisted'], to: 'cancelled' },
   attended: { from: ['confirmed'], to: 'attended' },
   no_show: { from: ['confirmed'], to: 'no_show' },
-  reopen: { from: ['declined', 'cancelled', 'no_show', 'attended'], to: 'pending' },
+  reopen: { from: ['declined', 'cancelled', 'no_show', 'attended', 'waitlisted'], to: 'pending' },
 };
 
 router.post('/reservations/:id/:action', async (req, res) => {
@@ -326,9 +351,9 @@ router.post('/reservations/:id/:action', async (req, res) => {
     // a cancel→reopen chain must not keep the row in the release queue.
     db.prepare('UPDATE reservations SET release_needed=0 WHERE id=?').run(r.id);
   }
-  if (req.params.action === 'decline' && req.body.mark_soldout === 'on') {
+  if (['decline', 'waitlist'].includes(req.params.action) && req.body.mark_soldout === 'on') {
     // One-click "this session is full": stop the booking form offering this
-    // (date, session) so the decline doesn't repeat for the next visitor.
+    // (date, session) so the decline/waitlisting doesn't repeat for the next visitor.
     db.prepare(`INSERT INTO soldout (date, slot_id, created_by) VALUES (?,?,?)
                 ON CONFLICT(date, slot_id) DO NOTHING`)
       .run(r.visit_date, r.slot_id, req.session.staff.username);
@@ -341,6 +366,8 @@ router.post('/reservations/:id/:action', async (req, res) => {
       updated.email, `[Seoul RAIM] Reservation confirmed — ${updated.code}`, mailer.confirmedEmail(updated),
       [{ filename: 'raim-visit.ics', content: ics, contentType: 'text/calendar' }]
     );
+  } else if (req.params.action === 'waitlist') {
+    await mailer.sendMail(updated.email, `[Seoul RAIM] You're on the waitlist — ${updated.code}`, mailer.waitlistedEmail(updated));
   } else if (req.params.action === 'decline') {
     await mailer.sendMail(updated.email, `[Seoul RAIM] About your request — ${updated.code}`, mailer.declinedEmail(updated));
   } else if (req.params.action === 'cancel') {

@@ -1,7 +1,7 @@
 <% /* expects: r (reservation row) */ %>
 <% if (r.status === 'pending') { %>
   <details class="inline-edit">
-    <summary>Confirm / decline</summary>
+    <summary>Confirm / waitlist / decline</summary>
     <form method="POST" action="/admin/reservations/<%= r.id %>/confirm" class="confirm-box">
       <input type="hidden" name="_csrf" value="<%= csrf %>">
       <label style="display:flex;gap:8px;align-items:flex-start;">
@@ -10,6 +10,19 @@
         Seoul Public Service Reservation (yeyak) admin.</span>
       </label>
       <button class="btn sm green" type="submit" style="margin-top:8px;">Confirm &amp; email visitor</button>
+    </form>
+    <form method="POST" action="/admin/reservations/<%= r.id %>/waitlist" class="waitlist-box">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <p style="margin:0;"><strong>Session full for this party?</strong> Put the request on the
+      <strong>waitlist</strong> instead of declining — the visitor is emailed and can be promoted
+      later if seats free up.</p>
+      <label style="display:flex;gap:8px;align-items:flex-start;margin-top:8px;">
+        <input type="checkbox" name="mark_soldout">
+        <span>Also mark this session as <strong>fully booked</strong> for <%= r.visit_date %> — only when
+        NO party size fits anymore; smaller groups may still fit. The booking form stops offering it
+        (undo under Schedule).</span>
+      </label>
+      <button class="btn sm" type="submit" style="margin-top:8px;">Waitlist &amp; email visitor</button>
     </form>
     <form method="POST" action="/admin/reservations/<%= r.id %>/decline" class="decline-box">
       <input type="hidden" name="_csrf" value="<%= csrf %>">
@@ -20,6 +33,29 @@
         the booking form stops offering it (undo under Schedule).</span>
       </label>
       <button class="btn sm red" type="submit" style="margin-top:8px;">Decline &amp; email visitor</button>
+    </form>
+  </details>
+<% } else if (r.status === 'waitlisted') { %>
+  <details class="inline-edit">
+    <summary>Promote / decline</summary>
+    <form method="POST" action="/admin/reservations/<%= r.id %>/confirm" class="confirm-box">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <label style="display:flex;gap:8px;align-items:flex-start;">
+        <input type="checkbox" name="yeyak_blocked" required>
+        <span>Seats freed up — <strong><%= r.party_size %> seat(s) are blocked</strong> for this session in the
+        yeyak admin (kept from a cancellation, or newly blocked). If more seats remain free, also remove
+        the session's sold-out mark under Schedule.</span>
+      </label>
+      <button class="btn sm green" type="submit" style="margin-top:8px;">Confirm &amp; email visitor</button>
+    </form>
+    <form method="POST" action="/admin/reservations/<%= r.id %>/decline" class="decline-box">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <input type="text" name="decline_reason" placeholder="Reason shown to visitor (e.g. no seats freed up before the visit date)" style="width:100%;">
+      <button class="btn sm red" type="submit" style="margin-top:8px;">Decline &amp; email visitor</button>
+    </form>
+    <form method="POST" action="/admin/reservations/<%= r.id %>/reopen" style="margin-top:8px;">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <button class="btn sm outline" type="submit">Back to pending</button>
     </form>
   </details>
 <% } else if (r.status === 'confirmed') { %>

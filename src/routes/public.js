@@ -122,13 +122,13 @@ router.post('/reserve', reserveLimiter, async (req, res) => {
   if (!form.agree) return fail('Please agree to the privacy notice and no-show policy.');
 
   const upcomingCount = db.prepare(
-    `SELECT COUNT(*) AS c FROM reservations WHERE email = ? AND status IN ('pending','confirmed') AND visit_date >= ?`
+    `SELECT COUNT(*) AS c FROM reservations WHERE email = ? AND status IN ('pending','confirmed','waitlisted') AND visit_date >= ?`
   ).get(form.email, todayStr()).c;
   if (upcomingCount >= 3)
     return fail('You already have 3 upcoming reservations. Please cancel one via My Booking, or contact us by email.');
 
   const dup = db.prepare(
-    `SELECT id FROM reservations WHERE email = ? AND visit_date = ? AND slot_id = ? AND status IN ('pending','confirmed')`
+    `SELECT id FROM reservations WHERE email = ? AND visit_date = ? AND slot_id = ? AND status IN ('pending','confirmed','waitlisted')`
   ).get(form.email, form.date, form.slot_id);
   if (dup) return fail('You already have a request for this session. Check the My Booking page.');
 
@@ -176,7 +176,7 @@ router.post('/booking/cancel', cancelLimiter, async (req, res) => {
   const code = String(req.body.code || '').trim().toUpperCase();
   const email = String(req.body.email || '').trim().toLowerCase();
   const r = getReservationByCode(code);
-  if (r && r.email === email && ['pending', 'confirmed'].includes(r.status)) {
+  if (r && r.email === email && ['pending', 'confirmed', 'waitlisted'].includes(r.status)) {
     // A confirmed reservation has seats blocked in the yeyak admin — flag them for release.
     const needsRelease = r.status === 'confirmed' ? 1 : 0;
     db.prepare(`UPDATE reservations SET status='cancelled', release_needed=?, decided_at=datetime('now'), decided_by='visitor' WHERE id=?`)
@@ -184,9 +184,14 @@ router.post('/booking/cancel', cancelLimiter, async (req, res) => {
     const updated = getReservationByCode(code);
     await mailer.sendMail(updated.email, `[Seoul RAIM] Reservation cancelled — ${updated.code}`, mailer.cancelledEmail(updated));
     if (needsRelease) {
+      // Freed-but-still-blocked seats should go to waitlisted requests of the
+      // same session first — tell staff how many candidates there are.
+      const waitlistCount = db.prepare(
+        `SELECT COUNT(*) AS c FROM reservations WHERE status = 'waitlisted' AND visit_date = ? AND slot_id = ?`
+      ).get(updated.visit_date, updated.slot_id).c;
       await mailer.notifyStaff(
         `[RAIM] 확정 예약 취소 — yeyak 해제 필요 ${updated.code} (${updated.visit_date} ${updated.start_time})`,
-        mailer.staffReleaseEmail(updated)
+        mailer.staffReleaseEmail(updated, waitlistCount)
       );
     }
   }

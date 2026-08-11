@@ -47,6 +47,30 @@ async function sendReminders() {
   return sent;
 }
 
+// Waitlisted requests whose visit date has passed can no longer be promoted —
+// close them out (auto-decline + email) instead of letting them vanish from
+// the dashboard/digest while the visitor still sees "Waitlisted" forever.
+async function expireWaitlist() {
+  const today = todayStr();
+  const rows = db.prepare(`
+    SELECT r.*, s.tour_type, s.start_time, s.end_time, s.language
+    FROM reservations r JOIN slots s ON s.id = r.slot_id
+    WHERE r.status = 'waitlisted' AND r.visit_date < ?`).all(today);
+  const update = db.prepare(`
+    UPDATE reservations SET status='declined', decline_reason=?, decided_at=datetime('now'), decided_by='system'
+    WHERE id=? AND status='waitlisted'`);
+  const REASON = 'No seats freed up before your visit date.';
+  let expired = 0;
+  for (const r of rows) {
+    if (update.run(REASON, r.id).changes !== 1) continue;
+    expired += 1;
+    await mailer.sendMail(r.email, `[Seoul RAIM] About your request — ${r.code}`,
+      mailer.declinedEmail({ ...r, decline_reason: REASON }));
+  }
+  if (expired > 0) console.log(`[waitlist] auto-declined ${expired} past-date waitlisted request(s)`);
+  return expired;
+}
+
 // Morning digest: one staff email a day (at digest_hour KST, hourly-checked)
 // summarizing pending requests (SLA breaches flagged), the yeyak release
 // queue, and today's confirmed visitors — a routine to work through instead
@@ -74,14 +98,23 @@ async function sendDailyDigest() {
     WHERE r.status = 'pending'
     ORDER BY r.visit_date, s.start_time, r.created_at`).all();
   const releaseQueue = db.prepare(`
-    SELECT r.*, s.start_time, s.end_time
+    SELECT r.*, s.start_time, s.end_time,
+           (SELECT COUNT(*) FROM reservations w
+             WHERE w.status = 'waitlisted' AND w.visit_date = r.visit_date AND w.slot_id = r.slot_id) AS waitlist_count
     FROM reservations r JOIN slots s ON s.id = r.slot_id
     WHERE r.release_needed = 1 ORDER BY r.decided_at`).all();
   const todaysCount = db.prepare(`
     SELECT COUNT(*) AS c FROM reservations
     WHERE visit_date = ? AND status IN ('confirmed','attended')`).get(today).c;
+  const waitlist = db.prepare(`
+    SELECT r.*, s.tour_type, s.start_time, s.end_time, s.language
+    FROM reservations r JOIN slots s ON s.id = r.slot_id
+    WHERE r.status = 'waitlisted' AND r.visit_date >= ?
+    ORDER BY r.visit_date, s.start_time, r.created_at`).all(today);
 
-  if (pending.length === 0 && releaseQueue.length === 0) {
+  // Waitlisted rows are actionable too (time-critical: promote or decline
+  // before the visit date) — a waitlist-only day must still send.
+  if (pending.length === 0 && releaseQueue.length === 0 && waitlist.length === 0) {
     setSetting('digest_last_sent', today);
     console.log('[digest] nothing actionable — skipped');
     return { sent: false, skipped: 'empty' };
@@ -90,9 +123,10 @@ async function sendDailyDigest() {
   const lateCount = pending.filter(p => p.age_hours >= SLA_HOURS).length;
   const subject = `[RAIM] 아침 다이제스트 — 대기 ${pending.length}건`
     + (lateCount > 0 ? ` (SLA 초과 ${lateCount}건)` : '')
-    + ` · yeyak 해제 ${releaseQueue.length}건`;
+    + ` · yeyak 해제 ${releaseQueue.length}건`
+    + (waitlist.length > 0 ? ` · 대기자 ${waitlist.length}명` : '');
   const result = await mailer.notifyStaff(subject,
-    mailer.digestEmail({ pending, releaseQueue, todaysCount, slaHours: SLA_HOURS }));
+    mailer.digestEmail({ pending, releaseQueue, todaysCount, waitlist, slaHours: SLA_HOURS }));
   if (result.skipped) {
     setSetting('digest_last_sent', today);
     console.log('[digest] staff_notify_email not set — skipped');
@@ -111,13 +145,16 @@ async function sendDailyDigest() {
 
 function start() {
   const safeReminders = () => sendReminders().catch(err => console.error('[reminder] failed', err));
+  const safeExpire = () => expireWaitlist().catch(err => console.error('[waitlist] expire failed', err));
   const safeDigest = () => sendDailyDigest().catch(err => console.error('[digest] failed', err));
   purgeOldData(); // once at boot
   safeReminders(); // once at boot
+  safeExpire(); // once at boot — before the digest so expired rows never show up in it
   safeDigest(); // once at boot
   setInterval(purgeOldData, 12 * 60 * 60 * 1000).unref(); // then twice a day
   setInterval(safeReminders, 60 * 60 * 1000).unref(); // then hourly
+  setInterval(safeExpire, 60 * 60 * 1000).unref(); // then hourly
   setInterval(safeDigest, 60 * 60 * 1000).unref(); // then hourly
 }
 
-module.exports = { purgeOldData, sendReminders, sendDailyDigest, start };
+module.exports = { purgeOldData, sendReminders, expireWaitlist, sendDailyDigest, start };

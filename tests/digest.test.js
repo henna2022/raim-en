@@ -53,6 +53,7 @@ test('DG1: due digest sends once with pending, SLA breaches and release queue', 
   const late = insertRow({ hoursAgo: 60 });
   const release = insertRow({ status: 'cancelled', releaseNeeded: 1 });
   insertRow({ status: 'confirmed', visitDate: todayStrKST() });
+  insertRow({ status: 'waitlisted' });
   setSettingDb('digest_hour', '0'); // always due
   resetLastSent();
 
@@ -65,6 +66,9 @@ test('DG1: due digest sends once with pending, SLA breaches and release queue', 
   assert.match(emails[0].subject, /yeyak 해제 1건/);
   for (const code of [fresh, late, release]) assert.ok(emails[0].html.includes(code), `digest must list ${code}`);
   assert.match(emails[0].html, /오늘 확정 방문 <strong>1건/);
+  assert.match(emails[0].html, /대기자\(waitlist\) <strong[^>]*>1명/);
+  assert.match(emails[0].subject, /대기자 1명/);
+  assert.match(emails[0].html, /대기자 — 방문일 전에 승격 또는 거절 필요/); // itemized section
 });
 
 test('DG2: second call the same day is a no-op', async () => {
@@ -115,9 +119,26 @@ test('DG6: no staff address -> skipped, no email logged, day marked processed', 
   assert.equal(digestEmails().length, 1);
 });
 
+test('DG8: a waitlist-only day still sends the digest', async () => {
+  withDb(ctx.dataDir, (db) => db.prepare(`UPDATE reservations SET status='declined', release_needed=0`).run());
+  const code = insertRow({ status: 'waitlisted' });
+  setSettingDb('digest_hour', '0');
+  setSettingDb('staff_notify_email', 'staff@example.com');
+  resetLastSent();
+  const before = digestEmails().length;
+  const r = await maintenance.sendDailyDigest();
+  assert.equal(r.sent, true, 'waitlisted rows are actionable — the digest must send');
+  const emails = digestEmails();
+  assert.equal(emails.length, before + 1);
+  const last = emails[emails.length - 1];
+  assert.match(last.subject, /대기 0건 · yeyak 해제 0건 · 대기자 1명/);
+  assert.ok(last.html.includes(code));
+});
+
 test('DG7: SMTP transport failure -> day NOT marked, next tick retries', async () => {
   setSettingDb('staff_notify_email', 'staff@example.com');
   resetLastSent();
+  const before = digestEmails().length;
   // Same module instance as the app (require cache) — simulate a configured
   // SMTP transport whose send fails, then restore.
   const mailer = require('../src/mailer');
@@ -138,5 +159,5 @@ test('DG7: SMTP transport failure -> day NOT marked, next tick retries', async (
   // Retry with the transport healthy again (outbox mode): the digest sends.
   const retry = await maintenance.sendDailyDigest();
   assert.equal(retry.sent, true);
-  assert.equal(digestEmails().length, 2);
+  assert.equal(digestEmails().length, before + 1);
 });

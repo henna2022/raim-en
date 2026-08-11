@@ -42,6 +42,7 @@ tr:hover td { background: #f7f9fe; }
 
 .badge { display: inline-block; font-size: 11px; font-weight: 800; padding: 3px 9px; border-radius: 999px; white-space: nowrap; letter-spacing: .3px; }
 .badge-pending { background: #fdf5e0; color: #a5680a; }
+.badge-waitlisted { background: #f3e8ff; color: #7c3aed; }
 .badge-confirmed { background: #e6f6ec; color: var(--ok); }
 .badge-declined { background: #fdeeee; color: var(--danger); }
 .badge-cancelled { background: #f1f3f6; color: var(--soft); }
@@ -109,6 +110,7 @@ tr.late:hover td { background: #fbe4e4; }
 details.inline-edit { margin-top: 4px; }
 details.inline-edit summary { cursor: pointer; color: var(--blue-dark); font-size: 12.5px; font-weight: 700; }
 .confirm-box { background: #eef9f1; border: 1px solid #c6ead2; border-radius: 10px; padding: 10px 12px; margin-top: 6px; font-size: 12.5px; }
+.waitlist-box { background: #f9f4ff; border: 1px solid #e5d5f7; border-radius: 10px; padding: 10px 12px; margin-top: 6px; font-size: 12.5px; }
 .decline-box { background: #fdeeee; border: 1px solid #f6cccc; border-radius: 10px; padding: 10px 12px; margin-top: 6px; font-size: 12.5px; }
 
 /* login */

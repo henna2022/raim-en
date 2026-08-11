@@ -99,6 +99,26 @@ function confirmedEmail(r) {
     <p style="color:#b91c1c;">If your plans change, please cancel via the My Booking page. Repeated no-shows may lead to future requests being declined.</p>`);
 }
 
+function waitlistedEmail(r) {
+  const s = getSettings();
+  return baseTemplate("You're on the waitlist", `
+    <p>Dear ${esc(r.name)},</p>
+    <p>The session you requested is currently <strong>fully booked</strong>, so we have placed your
+    request on the <strong>waitlist</strong>:</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <tr><td style="padding:6px 0;color:#6b7280;width:130px;">Request code</td><td style="font-weight:bold;">${r.code}</td></tr>
+      <tr><td style="padding:6px 0;color:#6b7280;">Tour</td><td>${fmtSlot(r)}</td></tr>
+      <tr><td style="padding:6px 0;color:#6b7280;">Party size</td><td>${r.party_size}</td></tr>
+    </table>
+    <p>If seats free up (cancellations do happen), we will email you a <strong>confirmation</strong> —
+    no action needed on your side. You can check or leave the waitlist anytime on the
+    <strong>My Booking</strong> page with your code and email.</p>
+    <p>Don't want to wait? You are welcome to submit a request for another date or session on our
+    booking page as well — and our walk-in areas (Robot &amp; AI Garden and RAIM PLAY) need
+    <strong>no reservation</strong> at all.</p>
+    <p style="color:#6b7280;">Questions? Contact us at ${s.contact_email}.</p>`);
+}
+
 function declinedEmail(r) {
   const s = getSettings();
   return baseTemplate('About your reservation request', `
@@ -219,21 +239,26 @@ function staffNewRequestEmail(r) {
     </div>`);
 }
 
-function staffReleaseEmail(r) {
+function staffReleaseEmail(r, waitlistCount = 0) {
   return staffTemplate('확정 예약 취소 — yeyak 좌석 해제 필요', `
     <p>확정된 예약이 <strong>방문자에 의해 취소</strong>되었습니다.</p>
     ${staffInfoTable(r)}
+    ${waitlistCount > 0 ? `
+    <div style="background:#f3e8ff;border-radius:8px;padding:12px 16px;margin-top:16px;font-size:13px;color:#7c3aed;">
+      이 회차에 <strong>대기자 ${waitlistCount}명</strong>이 있습니다. 좌석을 해제하기 전에
+      Dashboard의 <strong>Waitlist</strong>에서 승격(Confirm)을 먼저 검토하세요 — 차단해 둔 좌석을 그대로 쓰면 됩니다.
+    </div>` : ''}
     <div style="background:#fdeeee;border-radius:8px;padding:12px 16px;margin-top:16px;font-size:13px;color:#d22030;">
-      yeyak에 차단해 둔 <strong>${r.party_size}석을 해제</strong>해 주세요.
+      ${waitlistCount > 0 ? '승격하지 않는 경우에만 ' : ''}yeyak에 차단해 둔 <strong>${r.party_size}석을 해제</strong>해 주세요.
       해제 후 관리자 페이지 Dashboard의 <strong>Yeyak release queue</strong>에서 완료 처리하면 목록에서 사라집니다.
     </div>`);
 }
 
 // Morning digest — one staff email a day summarizing everything actionable,
 // so staff work a routine instead of reacting to per-event notifications.
-// data: { pending: rows+age_hours, releaseQueue: rows, todaysCount, slaHours }
+// data: { pending: rows+age_hours, releaseQueue: rows(+waitlist_count), todaysCount, waitlist: rows, slaHours }
 function digestEmail(data) {
-  const { pending, releaseQueue, todaysCount, slaHours } = data;
+  const { pending, releaseQueue, todaysCount, waitlist = [], slaHours } = data;
   const lateCount = pending.filter(p => p.age_hours >= slaHours).length;
 
   const pendingRows = pending.map(r => `
@@ -250,13 +275,23 @@ function digestEmail(data) {
     <tr>
       <td style="padding:5px 8px;font-weight:bold;white-space:nowrap;">${r.code}</td>
       <td style="padding:5px 8px;white-space:nowrap;">${r.visit_date} ${r.start_time}</td>
-      <td style="padding:5px 8px;">${r.party_size}석 해제 필요</td>
+      <td style="padding:5px 8px;">${r.party_size}석 해제 필요${r.waitlist_count > 0
+        ? ` — <span style="color:#7c3aed;">대기자 ${r.waitlist_count}명, 해제 대신 승격 검토</span>` : ''}</td>
+    </tr>`).join('');
+
+  const waitlistRows = waitlist.map(r => `
+    <tr>
+      <td style="padding:5px 8px;white-space:nowrap;">${r.visit_date} ${r.start_time}</td>
+      <td style="padding:5px 8px;">${r.tour_type === 'permanent' ? '상설' : '기획'}${r.language === 'en' ? '·EN' : ''}</td>
+      <td style="padding:5px 8px;font-weight:bold;white-space:nowrap;">${r.code}</td>
+      <td style="padding:5px 8px;">${esc(r.name)} · ${r.party_size}명</td>
     </tr>`).join('');
 
   return staffTemplate('아침 다이제스트', `
     <p style="font-size:15px;">
       대기 <strong>${pending.length}건</strong>${lateCount > 0 ? ` (SLA ${slaHours}시간 초과 <strong style="color:#d22030;">${lateCount}건</strong>)` : ''}
       · yeyak 해제 대기 <strong>${releaseQueue.length}건</strong>
+      ${waitlist.length > 0 ? `· 대기자(waitlist) <strong style="color:#7c3aed;">${waitlist.length}명</strong>` : ''}
       · 오늘 확정 방문 <strong>${todaysCount}건</strong>
     </p>
     ${pending.length > 0 ? `
@@ -264,7 +299,10 @@ function digestEmail(data) {
       <table style="width:100%;border-collapse:collapse;font-size:13px;">${pendingRows}</table>` : ''}
     ${releaseQueue.length > 0 ? `
       <h3 style="font-size:14px;margin:18px 0 6px;color:#d22030;">yeyak 좌석 해제 대기</h3>
-      <table style="width:100%;border-collapse:collapse;font-size:13px;">${releaseRows}</table>` : ''}`);
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">${releaseRows}</table>` : ''}
+    ${waitlist.length > 0 ? `
+      <h3 style="font-size:14px;margin:18px 0 6px;color:#7c3aed;">대기자 — 방문일 전에 승격 또는 거절 필요</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">${waitlistRows}</table>` : ''}`);
 }
 
 async function notifyStaff(subject, html) {
@@ -274,7 +312,7 @@ async function notifyStaff(subject, html) {
 }
 
 module.exports = {
-  sendMail, requestReceivedEmail, confirmedEmail, declinedEmail, cancelledEmail, reminderEmail,
+  sendMail, requestReceivedEmail, confirmedEmail, waitlistedEmail, declinedEmail, cancelledEmail, reminderEmail,
   staffNewRequestEmail, staffReleaseEmail, digestEmail, notifyStaff, icsForReservation,
   smtpConfigured: !!transporter,
 };

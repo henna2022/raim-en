@@ -307,6 +307,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .status-card { max-width: 620px; margin: 28px auto 64px; }
 .status-banner { border-radius: 14px; padding: 15px 18px; font-weight: 700; margin-bottom: 16px; font-size: 14.5px; }
 .st-pending { background: var(--amber-soft); color: var(--amber-ink); }
+.st-waitlisted { background: #f3e8ff; color: #7c3aed; }
 .st-confirmed { background: var(--green-soft); color: var(--green-ink); }
 .st-declined, .st-no_show { background: var(--red-soft); color: var(--red-ink); }
 .st-cancelled { background: var(--gray-card-2); color: var(--ink-soft); }
