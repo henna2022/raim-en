@@ -46,32 +46,159 @@
 </div>
 <% } %>
 
-<div class="panel">
-  <h2 style="margin-top:0;">Pending requests — review &amp; confirm</h2>
-  <p class="muted">Workflow: ① check seat availability for the session → ② block the seats in the
-  <strong>yeyak admin</strong> (관리자 예약) → ③ confirm here to send the visitor their confirmation email.</p>
-  <% if (pending.length === 0) { %><p class="muted">No pending requests.</p><% } else { %>
-  <table>
-    <tr><th>Code</th><th>Visit</th><th>Session</th><th>Visitor</th><th>Party</th><th>Waiting</th><th>Actions</th></tr>
-    <% for (const r of pending) { %>
-      <tr class="<%= r.age.late ? 'late' : '' %>">
-        <td><strong><%= r.code %></strong></td>
-        <td><%= r.visit_date %></td>
-        <td><%= r.start_time %>–<%= r.end_time %> <%= r.tour_type === 'permanent' ? 'Permanent' : 'Special' %>
-            <span class="badge badge-<%= r.language %>"><%= r.language.toUpperCase() %></span></td>
-        <td><%= r.name %><br><span class="muted"><%= r.email %><%= r.country ? ' · ' + r.country : '' %></span>
-            <% if (r.noshow_count > 0) { %><br><span class="badge badge-noshow">No-shows: <%= r.noshow_count %></span><% } %>
-            <% if (r.notes) { %><br><span class="muted">Note: <%= r.notes %></span><% } %></td>
-        <td><%= r.party_size %></td>
-        <td class="<%= r.age.late ? '' : 'muted' %>">
-          <%= r.age.label %><% if (r.age.late) { %><br><span class="badge badge-declined">OVER <%= slaHours %>H</span><% } %>
-        </td>
-        <td><%- include('partials/res_actions', { r }) %></td>
-      </tr>
+<% if (batchDone.confirmed > 0 || batchDone.skipped > 0) { %>
+  <div class="flash <%= (batchDone.skipped > 0 || batchDone.emailfail > 0) ? 'warn' : 'ok' %>">
+    <% if (batchDone.confirmed > 0) { %>
+      Confirmed <%= batchDone.confirmed %> request(s).
+      <% if (batchDone.emailfail > 0) { %>
+        <strong><%= batchDone.emailfail %> confirmation email(s) failed to send</strong> —
+        check <a href="/admin/emails">Emails</a> and resend manually.
+      <% } else if (smtpConfigured) { %>
+        Confirmation emails sent.
+      <% } else { %>
+        Confirmation emails are in the <a href="/admin/emails">Outbox</a> (SMTP not configured).
+      <% } %>
     <% } %>
-  </table>
+    <% if (batchDone.skipped > 0) { %>
+      <strong><%= batchDone.skipped %> request(s) were skipped</strong> (no longer pending — e.g. cancelled by the
+      visitor meanwhile). Re-check the seat count you blocked in the yeyak admin.
+    <% } %>
+  </div>
+  <script>
+    // One-shot banner: strip the result params so an F5 or a later action's
+    // referer-based redirect doesn't resurrect this message.
+    history.replaceState(null, '', location.pathname);
+  </script>
+<% } %>
+
+<div class="panel">
+  <h2 style="margin-top:0;">Pending requests — review &amp; confirm per session</h2>
+  <p class="muted">Requests are grouped per session so yeyak is only needed once per group:
+  ① check availability for the session → ② block the group's <strong>total seats</strong> in the
+  <strong>yeyak admin</strong> (관리자 예약) → ③ confirm the whole group here.
+  Untick a request to leave it out (e.g. to decline it individually).</p>
+  <% if (pendingGroups.length === 0) { %><p class="muted">No pending requests.</p><% } %>
+  <% for (const g of pendingGroups) { %>
+    <div class="res-group <%= g.late ? 'late-group' : '' %>" id="group-<%= g.key %>"
+         data-date="<%= g.visit_date %>" data-koweekday="<%= g.ko_weekday %>"
+         data-session="<%= g.start_time %>–<%= g.end_time %> <%= g.tour_type === 'permanent' ? '상설전시' : '기획전시' %> <%= g.language === 'en' ? '영어 해설' : '한국어 해설' %>">
+      <div class="res-group-head">
+        <div>
+          <strong><%= g.visit_date %> (<%= g.ko_weekday %>)</strong> · <%= g.start_time %>–<%= g.end_time %>
+          · <%= g.tour_type === 'permanent' ? 'Permanent' : 'Special' %>
+          <span class="badge badge-<%= g.language %>"><%= g.language.toUpperCase() %></span>
+          <% if (g.late) { %><span class="badge badge-declined">OVER <%= slaHours %>H</span><% } %>
+        </div>
+        <div class="res-group-tools">
+          <span class="muted"><span class="sel-count"><%= g.requests.length %></span> request(s) ·
+          <strong class="sel-seats"><%= g.seats %></strong> seat(s)</span>
+          <button type="button" class="btn sm gray copy-yeyak">Copy for yeyak</button>
+          <%
+            const svcUrl = g.tour_type === 'permanent' ? settings.yeyak_url_permanent : settings.yeyak_url_special;
+          %>
+          <% if (svcUrl && /^https?:\/\//.test(svcUrl)) { %>
+            <a class="btn sm outline" href="<%= svcUrl %>" target="_blank" rel="noopener">yeyak service ↗</a>
+          <% } %>
+          <% if (settings.yeyak_admin_url && /^https?:\/\//.test(settings.yeyak_admin_url)) { %>
+            <a class="btn sm outline" href="<%= settings.yeyak_admin_url %>" target="_blank" rel="noopener">yeyak admin ↗</a>
+          <% } %>
+        </div>
+      </div>
+      <table>
+        <tr><th></th><th>Code</th><th>Visitor</th><th>Party</th><th>Waiting</th><th>Actions</th></tr>
+        <% for (const r of g.requests) { %>
+          <tr class="<%= r.age.late ? 'late' : '' %>">
+            <td><input type="checkbox" name="ids" value="<%= r.id %>" form="bf-<%= g.key %>" checked
+                       class="row-select" data-party="<%= r.party_size %>" data-code="<%= r.code %>"></td>
+            <td><strong><%= r.code %></strong></td>
+            <td><%= r.name %><br><span class="muted"><%= r.email %><%= r.country ? ' · ' + r.country : '' %></span>
+                <% if (r.noshow_count > 0) { %><br><span class="badge badge-noshow">No-shows: <%= r.noshow_count %></span><% } %>
+                <% if (r.notes) { %><br><span class="muted">Note: <%= r.notes %></span><% } %></td>
+            <td><%= r.party_size %></td>
+            <td class="<%= r.age.late ? '' : 'muted' %>">
+              <%= r.age.label %><% if (r.age.late) { %><br><span class="badge badge-declined">OVER <%= slaHours %>H</span><% } %>
+            </td>
+            <td><%- include('partials/res_actions', { r }) %></td>
+          </tr>
+        <% } %>
+      </table>
+      <form id="bf-<%= g.key %>" method="POST" action="/admin/reservations/batch-confirm" class="batch-bar"
+            onsubmit="return confirm('Confirm the selected requests and email each visitor?');">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <label class="batch-attest">
+          <input type="checkbox" name="yeyak_blocked" required>
+          <span>I have <strong>blocked <span class="sel-seats"><%= g.seats %></span> seat(s)</strong> for this session
+          in the yeyak admin (관리자 예약).</span>
+        </label>
+        <button class="btn sm green" type="submit">Confirm <span class="sel-count"><%= g.requests.length %></span> &amp; email visitors</button>
+      </form>
+    </div>
   <% } %>
 </div>
+
+<script>
+// Group selection: keep the request/seat counters (header + attestation label +
+// submit button) in sync with the row checkboxes, and build the yeyak
+// copy-paste line from the CURRENTLY selected rows so it never goes stale.
+(function () {
+  function copyText(text, btn) {
+    var done = function () {
+      var old = btn.textContent;
+      btn.textContent = 'Copied ✓';
+      setTimeout(function () { btn.textContent = old; }, 1500);
+    };
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(done);
+    } else { // http intranet fallback
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta); done();
+    }
+  }
+  document.querySelectorAll('.res-group').forEach(function (group) {
+    var boxes = group.querySelectorAll('.row-select');
+    var submitBtn = group.querySelector('.batch-bar button[type="submit"]');
+    function selected() {
+      var count = 0, seats = 0, parts = [];
+      boxes.forEach(function (b) {
+        if (!b.checked) return;
+        count += 1; seats += Number(b.dataset.party) || 0;
+        parts.push(b.dataset.code + '(' + b.dataset.party + ')');
+      });
+      return { count: count, seats: seats, parts: parts };
+    }
+    function refresh() {
+      var s = selected();
+      group.querySelectorAll('.sel-count').forEach(function (el) { el.textContent = s.count; });
+      group.querySelectorAll('.sel-seats').forEach(function (el) { el.textContent = s.seats; });
+      if (submitBtn) submitBtn.disabled = s.count === 0;
+    }
+    boxes.forEach(function (b) {
+      b.addEventListener('change', refresh);
+      // A form-associated checkbox lets Enter implicitly submit the batch form
+      // (Chrome/Safari) instead of toggling — swallow it so keyboard users
+      // can't accidentally confirm the whole group.
+      b.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') e.preventDefault();
+      });
+    });
+    // Browsers restore checkbox state on reload/back-nav without firing
+    // 'change' — recompute so the counters and attestation never show the
+    // server-rendered full-group totals against a restored partial selection.
+    refresh();
+    window.addEventListener('pageshow', refresh);
+    var copyBtn = group.querySelector('.copy-yeyak');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', function () {
+        var s = selected();
+        copyText('[RAIM 외국인] ' + group.dataset.date + '(' + group.dataset.koweekday + ') '
+          + group.dataset.session + ' | ' + s.count + '건 ' + s.seats + '석 | ' + s.parts.join(' · '), copyBtn);
+      });
+    }
+  });
+})();
+</script>
 
 <div class="panel">
   <h2 style="margin-top:0;">Today's confirmed visitors</h2>

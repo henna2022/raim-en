@@ -88,6 +88,24 @@ label.f { display: block; font-size: 12.5px; font-weight: 700; margin: 10px 0 4p
 tr.late td { background: #fdeeee; }
 tr.late:hover td { background: #fbe4e4; }
 
+/* ---------- pending groups (batch confirm per session) ---------- */
+.res-group { border: 1px solid var(--line); border-radius: 12px; margin: 14px 0; overflow: hidden; }
+.res-group.late-group { border-color: #f6cccc; }
+.res-group-head {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
+  background: #f7f9fe; border-bottom: 1px solid var(--line); padding: 10px 14px; font-size: 13.5px;
+}
+.res-group.late-group .res-group-head { background: #fdf3f3; }
+.res-group-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12.5px; }
+.res-group table { font-size: 13px; }
+.res-group th:first-child, .res-group td:first-child { width: 26px; padding-right: 0; }
+.batch-bar {
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
+  background: #eef9f1; border-top: 1px solid #c6ead2; padding: 10px 14px;
+}
+.batch-attest { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; max-width: 620px; }
+.batch-bar button[disabled] { opacity: .45; cursor: not-allowed; }
+
 details.inline-edit { margin-top: 4px; }
 details.inline-edit summary { cursor: pointer; color: var(--blue-dark); font-size: 12.5px; font-weight: 700; }
 .confirm-box { background: #eef9f1; border: 1px solid #c6ead2; border-radius: 10px; padding: 10px 12px; margin-top: 6px; font-size: 12.5px; }

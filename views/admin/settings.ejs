@@ -24,6 +24,18 @@
     <input type="number" name="retention_days" value="<%= settings.retention_days %>" min="1" max="3650">
     <label class="f">No-show record retention (days)</label>
     <input type="number" name="noshow_retention_days" value="<%= settings.noshow_retention_days %>" min="1" max="3650">
+
+    <h2>Yeyak helper links (dashboard)</h2>
+    <p class="muted" style="margin:0 0 6px;">Shown next to each pending group. yeyak opens a fresh
+    service page per month — update the two service URLs when the new month's services go up.
+    Leave empty to hide a link. URLs must start with <code>https://</code>.</p>
+    <label class="f">yeyak service URL — Permanent Exhibition (this month)</label>
+    <input type="text" name="yeyak_url_permanent" value="<%= settings.yeyak_url_permanent %>" style="width:100%;" placeholder="https://yeyak.seoul.go.kr/web/reservation/selectReservView.do?rsv_svc_id=...">
+    <label class="f">yeyak service URL — Special Exhibition (this month)</label>
+    <input type="text" name="yeyak_url_special" value="<%= settings.yeyak_url_special %>" style="width:100%;" placeholder="https://yeyak.seoul.go.kr/web/reservation/selectReservView.do?rsv_svc_id=...">
+    <label class="f">yeyak admin console URL (관리자시스템 — optional)</label>
+    <input type="text" name="yeyak_admin_url" value="<%= settings.yeyak_admin_url %>" style="width:100%;" placeholder="https://...">
+
     <br><button class="btn" type="submit" style="margin-top:16px;">Save settings</button>
   </form>
 </div>

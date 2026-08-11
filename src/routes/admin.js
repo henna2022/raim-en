@@ -2,7 +2,7 @@
 const express = require('express');
 const { db, hashPassword, verifyPassword, setSetting } = require('../db');
 const {
-  DATE_RE, isValidDateStr, todayStr, closureInfo, getReservation, STATUS_BADGE, getSettings,
+  DATE_RE, isValidDateStr, todayStr, weekdayOf, closureInfo, getReservation, STATUS_BADGE, getSettings,
 } = require('../helpers');
 const mailer = require('../mailer');
 const { rateLimit } = require('../ratelimit');
@@ -105,6 +105,44 @@ function ageInfo(createdAtUtc) {
   return { hours, label, late: hours >= SLA_HOURS };
 }
 
+// Pending requests grouped per (visit_date, slot) so staff can check seats in
+// the yeyak admin ONCE per session and confirm the whole group in one action,
+// instead of swivel-chairing to yeyak for every single request.
+const KO_WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+function groupPending(pending) {
+  const groups = new Map();
+  for (const r of pending) {
+    const key = `${r.visit_date}|${r.slot_id}`;
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key: `${r.visit_date}-${r.slot_id}`,
+        visit_date: r.visit_date,
+        ko_weekday: KO_WEEKDAYS[weekdayOf(r.visit_date)],
+        slot_id: r.slot_id,
+        tour_type: r.tour_type,
+        start_time: r.start_time,
+        end_time: r.end_time,
+        language: r.language,
+        requests: [],
+        seats: 0,
+        late: false,
+      });
+    }
+    const g = groups.get(key);
+    g.requests.push(r);
+    g.seats += r.party_size;
+    if (r.age.late) g.late = true;
+  }
+  // SLA-breached groups surface first (the "Over 48h — reply now" tile points
+  // at the top of the list); the rest run in visit-date order.
+  return [...groups.values()].sort((a, b) => {
+    if (a.late !== b.late) return a.late ? -1 : 1;
+    return a.visit_date === b.visit_date
+      ? a.start_time.localeCompare(b.start_time)
+      : a.visit_date.localeCompare(b.visit_date);
+  });
+}
+
 router.get('/', (req, res) => {
   const today = todayStr();
   const pending = db.prepare(`
@@ -122,10 +160,16 @@ router.get('/', (req, res) => {
     SELECT r.*, s.tour_type, s.start_time, s.end_time, s.language
     FROM reservations r JOIN slots s ON s.id = r.slot_id
     WHERE r.release_needed = 1 ORDER BY r.decided_at`).all();
+  const batchDone = {
+    confirmed: Math.max(0, Number.parseInt(req.query.confirmed, 10) || 0),
+    skipped: Math.max(0, Number.parseInt(req.query.skipped, 10) || 0),
+    emailfail: Math.max(0, Number.parseInt(req.query.emailfail, 10) || 0),
+  };
   res.render('admin/dashboard', {
-    staff: req.session.staff, pending, todays, releaseQueue, today,
+    staff: req.session.staff, pending, pendingGroups: groupPending(pending),
+    todays, releaseQueue, today, batchDone,
     lateCount: pending.filter(p => p.age.late).length, slaHours: SLA_HOURS,
-    smtpConfigured: mailer.smtpConfigured, STATUS_BADGE,
+    smtpConfigured: mailer.smtpConfigured, STATUS_BADGE, settings: getSettings(),
   });
 });
 
@@ -196,6 +240,56 @@ router.post('/reservations/:id/released', (req, res) => {
   res.redirect(req.get('referer') || '/admin');
 });
 
+// Batch confirm: one yeyak seat-block per session, then confirm every selected
+// pending request of that session at once. All ids must belong to the SAME
+// (visit_date, slot) — the "I blocked N seats" attestation only makes sense for
+// a single session. Rows that stopped being pending between page render and
+// submit (e.g. the visitor cancelled) are skipped and reported, not failed —
+// but staff sized their yeyak block on the on-screen sum, so the flash banner
+// tells them to re-check the blocked seat count.
+router.post('/reservations/batch-confirm', async (req, res) => {
+  const fail = (message) => res.status(400).render('admin/error', { staff: req.session.staff, message });
+  if (req.body.yeyak_blocked !== 'on') {
+    return fail('Please tick the checkbox confirming you have blocked these seats in the Seoul Public Service Reservation (yeyak) admin first.');
+  }
+  const ids = [...new Set([].concat(req.body.ids || [])
+    .map(v => Number.parseInt(v, 10))
+    .filter(n => Number.isInteger(n) && n > 0))];
+  if (ids.length === 0 || ids.length > 100) {
+    return fail('Select at least one request to confirm.');
+  }
+
+  const rows = ids.map(id => getReservation(id)).filter(Boolean);
+  if (rows.length !== ids.length) return fail('One of the selected requests no longer exists.');
+  const sameSession = rows.every(r =>
+    r.visit_date === rows[0].visit_date && r.slot_id === rows[0].slot_id);
+  if (!sameSession) return fail('Batch confirm only works within a single session. Please reload the dashboard.');
+
+  // Guarded UPDATE (status='pending' in the WHERE) so a row that changed
+  // between page render and submit is skipped, never double-confirmed.
+  // release_needed is cleared: a confirmed row means its yeyak seats are
+  // blocked intentionally, so it must not linger in the release queue (a
+  // cancel→reopen→re-confirm chain would otherwise leave the flag set and
+  // invite staff to free a confirmed party's seats).
+  const update = db.prepare(`UPDATE reservations SET status='confirmed', release_needed=0, decided_at=datetime('now'), decided_by=? WHERE id=? AND status='pending'`);
+  let confirmed = 0;
+  let emailFailed = 0;
+  for (const r of rows) {
+    if (update.run(req.session.staff.username, r.id).changes !== 1) continue;
+    confirmed += 1;
+    const updated = getReservation(r.id);
+    const ics = mailer.icsForReservation(updated);
+    const result = await mailer.sendMail(
+      updated.email, `[Seoul RAIM] Reservation confirmed — ${updated.code}`, mailer.confirmedEmail(updated),
+      [{ filename: 'raim-visit.ics', content: ics, contentType: 'text/calendar' }]
+    );
+    // Without SMTP everything lands in the outbox by design — only count
+    // failures when real delivery was attempted, so the flash can be honest.
+    if (mailer.smtpConfigured && !result.sent) emailFailed += 1;
+  }
+  res.redirect(`/admin?confirmed=${confirmed}&skipped=${rows.length - confirmed}&emailfail=${emailFailed}`);
+});
+
 const TRANSITIONS = {
   confirm: { from: ['pending'], to: 'confirmed' },
   decline: { from: ['pending'], to: 'declined' },
@@ -223,6 +317,11 @@ router.post('/reservations/:id/:action', async (req, res) => {
   if (req.params.action === 'cancel' && r.status === 'confirmed') {
     // seats were blocked in yeyak — track the release until staff mark it done
     db.prepare('UPDATE reservations SET release_needed=1 WHERE id=?').run(r.id);
+  }
+  if (req.params.action === 'confirm') {
+    // confirmed = seats blocked in yeyak on purpose; a stale release flag from
+    // a cancel→reopen chain must not keep the row in the release queue.
+    db.prepare('UPDATE reservations SET release_needed=0 WHERE id=?').run(r.id);
   }
 
   const updated = getReservation(r.id);
@@ -398,7 +497,7 @@ router.get('/settings', requireAdmin, (req, res) => {
   });
 });
 router.post('/settings', requireAdmin, (req, res) => {
-  const keys = ['contact_email', 'contact_phone', 'address_en', 'max_party_size', 'booking_window_days', 'reply_sla_text', 'staff_notify_email', 'retention_days', 'noshow_retention_days'];
+  const keys = ['contact_email', 'contact_phone', 'address_en', 'max_party_size', 'booking_window_days', 'reply_sla_text', 'staff_notify_email', 'retention_days', 'noshow_retention_days', 'yeyak_url_permanent', 'yeyak_url_special', 'yeyak_admin_url'];
   for (const k of keys) {
     if (req.body[k] != null) setSetting(k, String(req.body[k]).trim().slice(0, 500));
   }
