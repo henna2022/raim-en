@@ -20,10 +20,12 @@ function purgeOldData() {
   const reservations = db.prepare(`DELETE FROM reservations WHERE visit_date < ? AND status != 'no_show'`).run(cutoffGeneral);
   const noshows = db.prepare(`DELETE FROM reservations WHERE status = 'no_show' AND visit_date < ?`).run(cutoffNoshow);
   const emails = db.prepare(`DELETE FROM email_log WHERE created_at < datetime('now', ?)`).run(`-${days} days`);
-  if (reservations.changes || noshows.changes || emails.changes) {
-    console.log(`[retention] purged ${reservations.changes} reservations, ${noshows.changes} no-shows, ${emails.changes} emails (older than ${days} days)`);
+  // Sold-out marks are only meaningful for future dates — drop them right away.
+  const soldout = db.prepare(`DELETE FROM soldout WHERE date < ?`).run(todayStr());
+  if (reservations.changes || noshows.changes || emails.changes || soldout.changes) {
+    console.log(`[retention] purged ${reservations.changes} reservations, ${noshows.changes} no-shows, ${emails.changes} emails, ${soldout.changes} sold-out marks (older than ${days} days)`);
   }
-  return { reservations: reservations.changes, noshows: noshows.changes, emails: emails.changes };
+  return { reservations: reservations.changes, noshows: noshows.changes, emails: emails.changes, soldout: soldout.changes };
 }
 
 // Day-before-visit reminder emails: confirmed reservations visiting tomorrow

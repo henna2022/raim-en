@@ -14,6 +14,11 @@
     <form method="POST" action="/admin/reservations/<%= r.id %>/decline" class="decline-box">
       <input type="hidden" name="_csrf" value="<%= csrf %>">
       <input type="text" name="decline_reason" placeholder="Reason shown to visitor (e.g. session fully booked)" style="width:100%;">
+      <label style="display:flex;gap:8px;align-items:flex-start;margin-top:8px;">
+        <input type="checkbox" name="mark_soldout">
+        <span>Also mark this session as <strong>fully booked</strong> for <%= r.visit_date %> —
+        the booking form stops offering it (undo under Schedule).</span>
+      </label>
       <button class="btn sm red" type="submit" style="margin-top:8px;">Decline &amp; email visitor</button>
     </form>
   </details>

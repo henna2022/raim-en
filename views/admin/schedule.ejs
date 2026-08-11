@@ -105,4 +105,45 @@
   </form>
 </div>
 
+<div class="panel">
+  <h2 style="margin-top:0;">Fully booked (sold-out) sessions</h2>
+  <p class="muted">A session marked here stops appearing on the booking form for that date, so visitors
+  can't file requests you would only have to decline. Marks are usually set from the decline form on the
+  Dashboard; add one manually when you spot a full session in yeyak. Remove the mark if seats free up —
+  past dates are cleaned up automatically.</p>
+  <% if (soldout.length === 0) { %><p class="muted">No upcoming sold-out sessions.</p><% } else { %>
+  <table>
+    <tr><th>Date</th><th>Session</th><th>Marked by</th><th></th></tr>
+    <% for (const so of soldout) { %>
+      <tr>
+        <td><%= so.date %></td>
+        <td><%= so.start_time %>–<%= so.end_time %> · <%= so.tour_type === 'permanent' ? 'Permanent' : 'Special' %>
+            <span class="badge badge-<%= so.language %>"><%= so.language.toUpperCase() %></span></td>
+        <td class="muted"><%= so.created_by %> · <%= so.created_at ? so.created_at.slice(0, 16) : '' %></td>
+        <td class="right">
+          <form method="POST" action="/admin/schedule/soldout/<%= so.id %>/delete" style="display:inline;">
+            <input type="hidden" name="_csrf" value="<%= csrf %>">
+            <button class="btn sm red" type="submit">Remove</button>
+          </form>
+        </td>
+      </tr>
+    <% } %>
+  </table>
+  <% } %>
+  <form method="POST" action="/admin/schedule/soldout" class="row" style="margin-top:14px;">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <div><label class="f">Date</label><input type="date" name="date" min="<%= today %>" required></div>
+    <div><label class="f">Session</label>
+      <select name="slot_id">
+        <% const DAY_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']; %>
+        <% for (const s of slots.filter(s => s.active)) { %>
+          <option value="<%= s.id %>"><%= s.start_time %>–<%= s.end_time %> <%= s.tour_type === 'permanent' ? 'Permanent' : 'Special' %> (<%= s.language.toUpperCase() %>) · <%= s.weekdays.split(',').map(n => DAY_SHORT[Number(n)]).join('/') %></option>
+        <% } %>
+      </select></div>
+    <div><button class="btn" type="submit">Mark fully booked</button></div>
+  </form>
+  <p class="form-hint muted" style="margin-top:6px;">The session must actually run on the chosen date —
+  marks for wrong-weekday or closed dates are rejected.</p>
+</div>
+
 <%- include('partials/bottom') %>

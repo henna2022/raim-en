@@ -114,6 +114,7 @@ router.post('/reserve', reserveLimiter, async (req, res) => {
   const slot = day.sessions.find(x => x.id === form.slot_id);
   if (!slot) return fail('Please select a session.');
   if (slot.past) return fail('That session has already started today. Please pick a later one.');
+  if (slot.soldout) return fail('That session is fully booked on that date. Please pick another session or day.');
   if (!form.name) return fail('Please enter your name.');
   if (!EMAIL_RE.test(form.email)) return fail('Please enter a valid email address.');
   if (!Number.isInteger(form.party_size) || form.party_size < 1 || form.party_size > maxParty)

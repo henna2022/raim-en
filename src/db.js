@@ -69,6 +69,18 @@ CREATE TABLE IF NOT EXISTS notices (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- A (date, session) the staff marked "fully booked" on the yeyak side. The
+-- booking form stops offering it, and POST /reserve rejects it server-side,
+-- so visitors stop filing requests that can only be declined.
+CREATE TABLE IF NOT EXISTS soldout (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  date TEXT NOT NULL,                          -- 'YYYY-MM-DD'
+  slot_id INTEGER NOT NULL REFERENCES slots(id),
+  created_by TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(date, slot_id)
+);
+
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL

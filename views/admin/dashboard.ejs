@@ -88,6 +88,7 @@
           · <%= g.tour_type === 'permanent' ? 'Permanent' : 'Special' %>
           <span class="badge badge-<%= g.language %>"><%= g.language.toUpperCase() %></span>
           <% if (g.late) { %><span class="badge badge-declined">OVER <%= slaHours %>H</span><% } %>
+          <% if (g.soldout) { %><span class="badge badge-noshow" title="This session is marked fully booked — decline these requests instead of blocking more seats.">SOLD OUT</span><% } %>
         </div>
         <div class="res-group-tools">
           <span class="muted"><span class="sel-count"><%= g.requests.length %></span> request(s) ·

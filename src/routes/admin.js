@@ -2,7 +2,7 @@
 const express = require('express');
 const { db, hashPassword, verifyPassword, setSetting } = require('../db');
 const {
-  DATE_RE, isValidDateStr, todayStr, weekdayOf, closureInfo, getReservation, STATUS_BADGE, getSettings,
+  DATE_RE, isValidDateStr, todayStr, weekdayOf, closureInfo, sessionsForDate, getReservation, STATUS_BADGE, getSettings,
 } = require('../helpers');
 const mailer = require('../mailer');
 const { rateLimit } = require('../ratelimit');
@@ -133,6 +133,10 @@ function groupPending(pending) {
     g.seats += r.party_size;
     if (r.age.late) g.late = true;
   }
+  // Flag groups whose session is already marked fully booked — staff should be
+  // declining these, not blocking more yeyak seats.
+  const soldoutCheck = db.prepare('SELECT 1 FROM soldout WHERE date = ? AND slot_id = ?');
+  for (const g of groups.values()) g.soldout = !!soldoutCheck.get(g.visit_date, g.slot_id);
   // SLA-breached groups surface first (the "Over 48h — reply now" tile points
   // at the top of the list); the rest run in visit-date order.
   return [...groups.values()].sort((a, b) => {
@@ -323,6 +327,13 @@ router.post('/reservations/:id/:action', async (req, res) => {
     // a cancel→reopen chain must not keep the row in the release queue.
     db.prepare('UPDATE reservations SET release_needed=0 WHERE id=?').run(r.id);
   }
+  if (req.params.action === 'decline' && req.body.mark_soldout === 'on') {
+    // One-click "this session is full": stop the booking form offering this
+    // (date, session) so the decline doesn't repeat for the next visitor.
+    db.prepare(`INSERT INTO soldout (date, slot_id, created_by) VALUES (?,?,?)
+                ON CONFLICT(date, slot_id) DO NOTHING`)
+      .run(r.visit_date, r.slot_id, req.session.staff.username);
+  }
 
   const updated = getReservation(r.id);
   if (req.params.action === 'confirm') {
@@ -351,12 +362,16 @@ router.get('/day/:date/print', (req, res) => {
   res.render('admin/print_day', { date, rows, STATUS_BADGE });
 });
 
-// ---------- schedule (slots + closures) ----------
+// ---------- schedule (slots + closures + sold-out sessions) ----------
 router.get('/schedule', (req, res) => {
   const slots = db.prepare('SELECT * FROM slots ORDER BY tour_type, start_time, language').all();
   const closures = db.prepare(`SELECT * FROM closures WHERE date >= date('now','-7 day') ORDER BY date`).all();
+  const soldout = db.prepare(`
+    SELECT so.*, s.start_time, s.end_time, s.tour_type, s.language, s.label
+    FROM soldout so JOIN slots s ON s.id = so.slot_id
+    WHERE so.date >= ? ORDER BY so.date, s.start_time`).all(todayStr());
   res.render('admin/schedule', {
-    staff: req.session.staff, slots, closures,
+    staff: req.session.staff, slots, closures, soldout, today: todayStr(),
     saved: req.query.saved === '1', error: req.query.error || null,
   });
 });
@@ -395,6 +410,8 @@ router.post('/schedule/slots/:id', (req, res) => {
       // keep history intact — deactivate instead of deleting
       db.prepare('UPDATE slots SET active = 0 WHERE id = ?').run(id);
     } else {
+      // sold-out marks reference the slot (FK) and are meaningless without it
+      db.prepare('DELETE FROM soldout WHERE slot_id = ?').run(id);
       db.prepare('DELETE FROM slots WHERE id = ?').run(id);
     }
     return res.redirect('/admin/schedule?saved=1');
@@ -419,6 +436,30 @@ router.post('/schedule/closures', (req, res) => {
 });
 router.post('/schedule/closures/:id/delete', (req, res) => {
   db.prepare('DELETE FROM closures WHERE id = ?').run(Number(req.params.id));
+  res.redirect('/admin/schedule?saved=1');
+});
+
+// Sold-out sessions: manual add (e.g. staff spot a full session in yeyak
+// before any request arrives) and undo (seats freed up by a yeyak cancel).
+router.post('/schedule/soldout', (req, res) => {
+  const date = String(req.body.date || '').trim();
+  const slotId = Number.parseInt(req.body.slot_id, 10);
+  const err = (msg) => res.redirect('/admin/schedule?error=' + encodeURIComponent(msg));
+  if (!isValidDateStr(date)) return err('Pick a valid date.');
+  if (date < todayStr()) return err('Sold-out marks can only be set for today or future dates.');
+  // The (date, session) pair must be one the booking form actually offers —
+  // a mark on a wrong-weekday/inactive slot or a closed date would save
+  // "successfully" but never block anything (silent no-op).
+  const day = sessionsForDate(date);
+  if (day.closed || !day.sessions.some(s => s.id === slotId)) {
+    return err('That session does not run on that date, so it cannot be marked sold out.');
+  }
+  db.prepare(`INSERT INTO soldout (date, slot_id, created_by) VALUES (?,?,?)
+              ON CONFLICT(date, slot_id) DO NOTHING`).run(date, slotId, req.session.staff.username);
+  res.redirect('/admin/schedule?saved=1');
+});
+router.post('/schedule/soldout/:id/delete', (req, res) => {
+  db.prepare('DELETE FROM soldout WHERE id = ?').run(Number(req.params.id));
   res.redirect('/admin/schedule?saved=1');
 });
 

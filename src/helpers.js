@@ -51,6 +51,9 @@ function sessionsForDate(dateStr) {
   if (openOverride && wd === '1') wd = '2';
   const isToday = dateStr === todayStr();
   const cutoff = nowHM();
+  const soldoutIds = new Set(
+    db.prepare('SELECT slot_id FROM soldout WHERE date = ?').all(dateStr).map(r => r.slot_id)
+  );
   const rows = db.prepare('SELECT * FROM slots WHERE active = 1 ORDER BY start_time, tour_type').all();
   const sessions = rows
     .filter(s => s.weekdays.split(',').includes(wd))
@@ -62,6 +65,7 @@ function sessionsForDate(dateStr) {
       language: s.language,
       label: s.label,
       past: isToday && s.start_time <= cutoff,
+      soldout: soldoutIds.has(s.id),
     }));
   return { closed: false, reason: '', sessions };
 }

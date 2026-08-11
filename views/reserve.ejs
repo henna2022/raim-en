@@ -142,14 +142,17 @@
         const langBadge = s.language === 'en'
           ? '<span class="badge english">ENGLISH</span>'
           : '<span class="badge korean">KOREAN</span>';
+        const unavailable = s.past || s.soldout;
+        const note = s.past ? ' <em style="color:#b45309;">(already started)</em>'
+          : s.soldout ? ' <em style="color:#d22030;">(fully booked)</em>' : '';
         wrap.innerHTML =
-          '<input type="radio" name="slot_id" value="' + s.id + '" required ' + (s.past ? 'disabled' : '') + '>' +
+          '<input type="radio" name="slot_id" value="' + s.id + '" required ' + (unavailable ? 'disabled' : '') + '>' +
           '<span class="box"><span class="time">' + s.start_time + '–' + s.end_time + '</span>' +
-          '<span class="lbl">' + typeName + (s.past ? ' <em style="color:#b45309;">(already started)</em>' : '') + '</span>' +
+          '<span class="lbl">' + typeName + note + '</span>' +
           langBadge + '</span>';
         list.appendChild(wrap);
         const input = wrap.querySelector('input');
-        if (preselect && Number(input.value) === preselect && !s.past) input.checked = true;
+        if (preselect && Number(input.value) === preselect && !unavailable) input.checked = true;
       }
     } catch (e) {
       dayMsg.textContent = 'Could not load sessions. Please try again.';
