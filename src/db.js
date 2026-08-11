@@ -197,6 +197,7 @@ function seed() {
     staff_notify_email: 'raim@seoulraim.com',
     retention_days: '90',
     noshow_retention_days: '365',
+    digest_hour: '9',
     // yeyak helper links shown on the dashboard. The service pages are opened
     // monthly on yeyak (one per exhibition per month), so staff paste the fresh
     // URLs here each month; empty = the dashboard just hides the link.

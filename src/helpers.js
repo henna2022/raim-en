@@ -4,6 +4,10 @@ const crypto = require('node:crypto');
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+// Reply SLA for pending requests, shared by the dashboard badges and the
+// morning digest email.
+const SLA_HOURS = 48;
+
 // True only for real calendar dates — DATE_RE alone accepts e.g. 2026-13-99.
 function isValidDateStr(s) {
   if (!DATE_RE.test(s)) return false;
@@ -144,7 +148,7 @@ const STATUS_BADGE = {
 };
 
 module.exports = {
-  DATE_RE, isValidDateStr, todayStr, nowHM, weekdayOf, addDays,
+  DATE_RE, SLA_HOURS, isValidDateStr, todayStr, nowHM, weekdayOf, addDays,
   closureInfo, sessionsForDate, genCode, getEnglishTours,
   getReservation, getReservationByCode, STATUS_BADGE, getSettings,
 };

@@ -229,6 +229,44 @@ function staffReleaseEmail(r) {
     </div>`);
 }
 
+// Morning digest — one staff email a day summarizing everything actionable,
+// so staff work a routine instead of reacting to per-event notifications.
+// data: { pending: rows+age_hours, releaseQueue: rows, todaysCount, slaHours }
+function digestEmail(data) {
+  const { pending, releaseQueue, todaysCount, slaHours } = data;
+  const lateCount = pending.filter(p => p.age_hours >= slaHours).length;
+
+  const pendingRows = pending.map(r => `
+    <tr${r.age_hours >= slaHours ? ' style="background:#fdeeee;"' : ''}>
+      <td style="padding:5px 8px;white-space:nowrap;">${r.visit_date} ${r.start_time}</td>
+      <td style="padding:5px 8px;">${r.tour_type === 'permanent' ? '상설' : '기획'}${r.language === 'en' ? '·EN' : ''}</td>
+      <td style="padding:5px 8px;font-weight:bold;white-space:nowrap;">${r.code}</td>
+      <td style="padding:5px 8px;">${esc(r.name)} · ${r.party_size}명</td>
+      <td style="padding:5px 8px;color:${r.age_hours >= slaHours ? '#d22030' : '#6b7280'};white-space:nowrap;">
+        ${r.age_hours >= slaHours ? `<strong>${r.age_hours}시간 경과</strong>` : `${r.age_hours}시간 경과`}</td>
+    </tr>`).join('');
+
+  const releaseRows = releaseQueue.map(r => `
+    <tr>
+      <td style="padding:5px 8px;font-weight:bold;white-space:nowrap;">${r.code}</td>
+      <td style="padding:5px 8px;white-space:nowrap;">${r.visit_date} ${r.start_time}</td>
+      <td style="padding:5px 8px;">${r.party_size}석 해제 필요</td>
+    </tr>`).join('');
+
+  return staffTemplate('아침 다이제스트', `
+    <p style="font-size:15px;">
+      대기 <strong>${pending.length}건</strong>${lateCount > 0 ? ` (SLA ${slaHours}시간 초과 <strong style="color:#d22030;">${lateCount}건</strong>)` : ''}
+      · yeyak 해제 대기 <strong>${releaseQueue.length}건</strong>
+      · 오늘 확정 방문 <strong>${todaysCount}건</strong>
+    </p>
+    ${pending.length > 0 ? `
+      <h3 style="font-size:14px;margin:18px 0 6px;">대기 중인 신청</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">${pendingRows}</table>` : ''}
+    ${releaseQueue.length > 0 ? `
+      <h3 style="font-size:14px;margin:18px 0 6px;color:#d22030;">yeyak 좌석 해제 대기</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">${releaseRows}</table>` : ''}`);
+}
+
 async function notifyStaff(subject, html) {
   const to = (getSettings().staff_notify_email || '').trim();
   if (!to) return { sent: false, skipped: true };
@@ -237,6 +275,6 @@ async function notifyStaff(subject, html) {
 
 module.exports = {
   sendMail, requestReceivedEmail, confirmedEmail, declinedEmail, cancelledEmail, reminderEmail,
-  staffNewRequestEmail, staffReleaseEmail, notifyStaff, icsForReservation,
+  staffNewRequestEmail, staffReleaseEmail, digestEmail, notifyStaff, icsForReservation,
   smtpConfigured: !!transporter,
 };

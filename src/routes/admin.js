@@ -2,7 +2,7 @@
 const express = require('express');
 const { db, hashPassword, verifyPassword, setSetting } = require('../db');
 const {
-  DATE_RE, isValidDateStr, todayStr, weekdayOf, closureInfo, sessionsForDate, getReservation, STATUS_BADGE, getSettings,
+  DATE_RE, SLA_HOURS, isValidDateStr, todayStr, weekdayOf, closureInfo, sessionsForDate, getReservation, STATUS_BADGE, getSettings,
 } = require('../helpers');
 const mailer = require('../mailer');
 const { rateLimit } = require('../ratelimit');
@@ -94,7 +94,6 @@ router.post('/logout', (req, res) => {
 router.use(requireLogin);
 
 // ---------- dashboard ----------
-const SLA_HOURS = 48;
 function ageInfo(createdAtUtc) {
   // created_at is SQLite datetime('now') = UTC
   const ms = Date.now() - new Date(createdAtUtc.replace(' ', 'T') + 'Z').getTime();
@@ -538,7 +537,7 @@ router.get('/settings', requireAdmin, (req, res) => {
   });
 });
 router.post('/settings', requireAdmin, (req, res) => {
-  const keys = ['contact_email', 'contact_phone', 'address_en', 'max_party_size', 'booking_window_days', 'reply_sla_text', 'staff_notify_email', 'retention_days', 'noshow_retention_days', 'yeyak_url_permanent', 'yeyak_url_special', 'yeyak_admin_url'];
+  const keys = ['contact_email', 'contact_phone', 'address_en', 'max_party_size', 'booking_window_days', 'reply_sla_text', 'staff_notify_email', 'retention_days', 'noshow_retention_days', 'yeyak_url_permanent', 'yeyak_url_special', 'yeyak_admin_url', 'digest_hour'];
   for (const k of keys) {
     if (req.body[k] != null) setSetting(k, String(req.body[k]).trim().slice(0, 500));
   }

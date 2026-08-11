@@ -1,6 +1,6 @@
 'use strict';
-const { db, getSettings } = require('./db');
-const { todayStr, addDays } = require('./helpers');
+const { db, getSettings, setSetting } = require('./db');
+const { todayStr, addDays, nowHM, SLA_HOURS } = require('./helpers');
 const mailer = require('./mailer');
 
 // Personal-data retention: reservations (and the emails that quote them) are kept
@@ -47,12 +47,77 @@ async function sendReminders() {
   return sent;
 }
 
-function start() {
-  const safeReminders = () => sendReminders().catch(err => console.error('[reminder] failed', err));
-  purgeOldData(); // once at boot
-  safeReminders(); // once at boot
-  setInterval(purgeOldData, 12 * 60 * 60 * 1000).unref(); // then twice a day
-  setInterval(safeReminders, 60 * 60 * 1000).unref(); // then hourly
+// Morning digest: one staff email a day (at digest_hour KST, hourly-checked)
+// summarizing pending requests (SLA breaches flagged), the yeyak release
+// queue, and today's confirmed visitors — a routine to work through instead
+// of reacting to per-event notifications.
+//
+// The digest_last_sent guard marks the day as PROCESSED on a successful send,
+// an intentionally-empty day, or a missing staff address — so the digest fires
+// at most once per day and always at the scheduled hour, never as a surprise
+// afternoon email after a quiet morning. A TRANSPORT failure (SMTP configured
+// but the send errored) deliberately leaves the day unmarked, so the next
+// hourly tick retries instead of silently losing the day's digest.
+async function sendDailyDigest() {
+  const settings = getSettings();
+  const hour = Number.parseInt(settings.digest_hour, 10);
+  if (!Number.isInteger(hour) || hour < 0 || hour > 23) return { sent: false, skipped: 'disabled' };
+
+  const today = todayStr();
+  if (settings.digest_last_sent === today) return { sent: false, skipped: 'already_sent' };
+  if (Number(nowHM().slice(0, 2)) < hour) return { sent: false, skipped: 'not_due' };
+
+  const pending = db.prepare(`
+    SELECT r.*, s.tour_type, s.start_time, s.end_time, s.language,
+           CAST((julianday('now') - julianday(r.created_at)) * 24 AS INTEGER) AS age_hours
+    FROM reservations r JOIN slots s ON s.id = r.slot_id
+    WHERE r.status = 'pending'
+    ORDER BY r.visit_date, s.start_time, r.created_at`).all();
+  const releaseQueue = db.prepare(`
+    SELECT r.*, s.start_time, s.end_time
+    FROM reservations r JOIN slots s ON s.id = r.slot_id
+    WHERE r.release_needed = 1 ORDER BY r.decided_at`).all();
+  const todaysCount = db.prepare(`
+    SELECT COUNT(*) AS c FROM reservations
+    WHERE visit_date = ? AND status IN ('confirmed','attended')`).get(today).c;
+
+  if (pending.length === 0 && releaseQueue.length === 0) {
+    setSetting('digest_last_sent', today);
+    console.log('[digest] nothing actionable — skipped');
+    return { sent: false, skipped: 'empty' };
+  }
+
+  const lateCount = pending.filter(p => p.age_hours >= SLA_HOURS).length;
+  const subject = `[RAIM] 아침 다이제스트 — 대기 ${pending.length}건`
+    + (lateCount > 0 ? ` (SLA 초과 ${lateCount}건)` : '')
+    + ` · yeyak 해제 ${releaseQueue.length}건`;
+  const result = await mailer.notifyStaff(subject,
+    mailer.digestEmail({ pending, releaseQueue, todaysCount, slaHours: SLA_HOURS }));
+  if (result.skipped) {
+    setSetting('digest_last_sent', today);
+    console.log('[digest] staff_notify_email not set — skipped');
+    return { sent: false, skipped: 'no_address' };
+  }
+  if (mailer.smtpConfigured && !result.sent) {
+    // Real delivery was attempted and failed — leave the day unmarked so the
+    // next hourly tick retries. (Without SMTP the outbox row IS the delivery.)
+    console.error(`[digest] send failed (${result.error}) — will retry next hour`);
+    return { sent: false, skipped: 'send_failed' };
+  }
+  setSetting('digest_last_sent', today);
+  console.log(`[digest] sent (${pending.length} pending, ${releaseQueue.length} releases)`);
+  return { sent: true, skipped: null };
 }
 
-module.exports = { purgeOldData, sendReminders, start };
+function start() {
+  const safeReminders = () => sendReminders().catch(err => console.error('[reminder] failed', err));
+  const safeDigest = () => sendDailyDigest().catch(err => console.error('[digest] failed', err));
+  purgeOldData(); // once at boot
+  safeReminders(); // once at boot
+  safeDigest(); // once at boot
+  setInterval(purgeOldData, 12 * 60 * 60 * 1000).unref(); // then twice a day
+  setInterval(safeReminders, 60 * 60 * 1000).unref(); // then hourly
+  setInterval(safeDigest, 60 * 60 * 1000).unref(); // then hourly
+}
+
+module.exports = { purgeOldData, sendReminders, sendDailyDigest, start };
