@@ -22,7 +22,6 @@ const BATCH = 50;
 
 const enabled = !!(WEBHOOK_URL && WEBHOOK_SECRET);
 
-const TOUR_LABEL = { permanent: '상설전시', special: '기획전시' };
 const TOUR_SHORT = { permanent: '상설', special: '기획' };
 const STATUS_LABEL = {
   pending: '대기(검토중)',
@@ -35,9 +34,10 @@ const STATUS_LABEL = {
 };
 
 // 예약 행(reservations JOIN slots) → 시트 한 줄.
-// 요청사항 원문은 보내지 않는다: 자유입력에 휠체어·알레르기 같은 건강 정보가 섞이면
-// 민감정보가 되어 접속기록 보관기간이 2년으로 늘고 유출 시 신고 기준도 달라진다.
-// 상세는 관리자 페이지에서 본다(개인정보 최소수집).
+// 개인정보 최소수집: 이메일과 요청사항(자유입력)은 시트로 보내지 않는다. 연락과
+// 상세 확인은 관리자 페이지에서 하며, 특히 자유입력에 휠체어·알레르기 같은 건강
+// 정보가 섞이면 민감정보가 되어 접속기록 보관기간이 2년으로 늘고 유출 시 신고
+// 기준도 달라진다. 전시 구분은 회차 문구에 이미 들어 있어 별도 열을 두지 않는다.
 function toRow(r) {
   // 회차와 시간은 열을 나눈다 — 시트에서 시간대별로 정렬·필터하려면 시간이 따로
   // 있어야 한다. 회차 번호는 그 날짜 기준으로 계산한다: 기획전시는 주말에만 09:30이
@@ -48,12 +48,10 @@ function toRow(r) {
     code: r.code,
     status: STATUS_LABEL[r.status] || r.status,
     visit_date: r.visit_date,
-    tour_type: TOUR_LABEL[r.tour_type] || r.tour_type,
+    name: r.name,
+    country: r.country,
     session: ordinal ? `[${ordinal}회차] ${kind}` : kind,
     time: `${r.start_time}~${r.end_time}`,
-    name: r.name,
-    email: r.email,
-    country: r.country,
     party_size: r.party_size,
     created_at: r.created_at,
     decided_at: r.decided_at || '',

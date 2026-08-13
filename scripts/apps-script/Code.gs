@@ -23,17 +23,16 @@
  * 코드를 수정하면 반드시 "배포 관리 > 편집 > 새 버전"으로 다시 배포해야 반영됩니다.
  *
  * ── 개인정보 주의 ──────────────────────────────────────────
- * 이 시트에는 방문객의 이름·이메일·국가가 들어갑니다. 요청사항(자유입력)은 아예
- * 보내지 않으며 상세는 raim-en 관리자 페이지에서 확인합니다 — 자유입력에 건강 관련
- * 정보가 섞이면 민감정보가 되어 규제 수준이 올라가기 때문입니다.
+ * 이 시트에는 방문객의 이름·국가가 들어갑니다. 이메일과 요청사항(자유입력)은 아예
+ * 보내지 않으며, 연락과 상세 확인은 raim-en 관리자 페이지에서 합니다 — 자유입력에
+ * 건강 관련 정보가 섞이면 민감정보가 되어 규제 수준이 올라가기 때문입니다.
  * 시트는 링크 공유하지 말고 담당자 계정에만 개별 공유하세요.
  */
 
 var SHEET_NAME = '예약신청';
 
 var HEADERS = [
-  '신청코드', '상태', '방문일', '전시', '회차', '시간',
-  '이름', '이메일', '국가', '인원',
+  '신청코드', '상태', '방문일', '이름', '국가', '회차', '시간', '예약 인원',
   '신청일시', '처리일시', '처리자', '거절사유', '최종동기화',
 ];
 var KEY_HEADER = '신청코드';
@@ -266,8 +265,8 @@ function deleteRows_(sheet, keyCol, codes, result) {
 
 function toValues_(r) {
   return [
-    str_(r.code), str_(r.status), str_(r.visit_date), str_(r.tour_type), str_(r.session), str_(r.time),
-    str_(r.name), str_(r.email), str_(r.country), r.party_size == null ? '' : Number(r.party_size),
+    str_(r.code), str_(r.status), str_(r.visit_date), str_(r.name), str_(r.country),
+    str_(r.session), str_(r.time), r.party_size == null ? '' : Number(r.party_size),
     str_(r.created_at), str_(r.decided_at), str_(r.decided_by), str_(r.decline_reason), new Date(),
   ];
 }

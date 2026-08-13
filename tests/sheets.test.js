@@ -194,11 +194,13 @@ test('SH6: 요청사항과 언어는 시트로 아예 나가지 않는다 (개�
   const r = await book({ email, name: 'Formula Test', notes: '=HYPERLINK("http://evil","x")' });
   const sent = rowsSentFor(r.code)[0];
   assert.equal(sent.name, 'Formula Test');
-  assert.equal(sent.email, email);
-  // 자유입력에는 건강정보가 섞일 수 있어 아예 전송하지 않는다.
+  // 개인정보 최소수집: 이메일·요청사항·언어는 시트로 전송하지 않는다.
+  assert.equal(sent.email, undefined, '이메일은 페이로드에 없어야 한다');
   assert.equal(sent.notes, undefined, '요청사항은 페이로드에 없어야 한다');
   assert.equal(sent.language, undefined, '언어도 더 이상 보내지 않는다');
-  assert.ok(!JSON.stringify(sent).includes('HYPERLINK'), '자유입력 내용이 어떤 필드로도 새면 안 된다');
+  const dump = JSON.stringify(sent);
+  assert.ok(!dump.includes('HYPERLINK'), '자유입력 내용이 어떤 필드로도 새면 안 된다');
+  assert.ok(!dump.includes(email), '이메일이 어떤 필드로도 새면 안 된다');
 });
 
 test('SH8: 보존기한이 지나 파기되면 시트에서도 삭제된다', async () => {

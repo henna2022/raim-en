@@ -92,12 +92,12 @@ function run(scriptPath, { secret = 'S3CRET', sheet = makeSheet('예약신청') 
 
 
 const SCRIPT = path.join(__dirname, '..', 'scripts', 'apps-script', 'Code.gs');
-const HEADERS = ['신청코드', '상태', '방문일', '전시', '회차', '시간', '이름', '이메일', '국가',
-  '인원', '신청일시', '처리일시', '처리자', '거절사유', '최종동기화'];
+const HEADERS = ['신청코드', '상태', '방문일', '이름', '국가', '회차', '시간', '예약 인원',
+  '신청일시', '처리일시', '처리자', '거절사유', '최종동기화'];
 const row = (over = {}) => ({
   code: 'RAIM-AAA111', status: '대기(검토중)', visit_date: '2026-09-02', session: '15:40–16:30',
-  tour_type: '상설전시', session: '[5회차] 상설전시해설', time: '15:40~16:20',
-  name: 'Aiko', email: 'a@example.com', country: 'Japan',
+  session: '[5회차] 상설전시해설', time: '15:40~16:20',
+  name: 'Aiko', country: 'Japan',
   party_size: 2, created_at: '2026-08-13 01:00:00', decided_at: '', decided_by: '', decline_reason: '',
   ...over,
 });
@@ -108,7 +108,7 @@ test('GS1: 최초 전송이면 헤더를 만들고 행을 추가한다', () => {
   assert.deepEqual([r.ok, r.appended, r.updated], [true, 1, 0]);
   assert.equal(h.sheet._grid[0][0], '신청코드');
   assert.equal(h.sheet._grid[1][0], 'RAIM-AAA111');
-  assert.equal(h.sheet._grid[1][6], 'Aiko');
+  assert.equal(h.sheet._grid[1][3], 'Aiko');
 });
 
 test('GS2: 같은 코드를 다시 보내면 행이 늘지 않고 갱신된다 (upsert)', () => {
@@ -118,7 +118,7 @@ test('GS2: 같은 코드를 다시 보내면 행이 늘지 않고 갱신된다 (
   assert.deepEqual([r.appended, r.updated], [0, 1]);
   assert.equal(h.sheet._grid.length, 2, '중복 행이 생기면 안 된다');
   assert.equal(h.sheet._grid[1][1], '확정');
-  assert.equal(h.sheet._grid[1][12], 'admin');
+  assert.equal(h.sheet._grid[1][10], 'admin');
 });
 
 test('GS3: 비밀키가 틀리거나 없으면 거부한다 (웹앱이 "모든 사용자" 공개라 유일한 방어선)', () => {
@@ -141,7 +141,7 @@ test('GS4: doGet은 쓰기 건수를 내보내지 않아 서버가 성공으로 
 test('GS5: 방문자가 넣은 수식은 앞에 따옴표가 붙어 실행되지 않는다', () => {
   const h = run(SCRIPT);
   h.post({ secret: 'S3CRET', rows: [row({ name: '=HYPERLINK("http://evil","x")' })] });
-  assert.ok(String(h.sheet._grid[1][6]).startsWith("'="));
+  assert.ok(String(h.sheet._grid[1][3]).startsWith("'="));
 });
 
 test('GS6: 직원이 열을 끼워 넣어도 헤더 기준으로 올바른 칸에 쓴다', () => {
@@ -152,7 +152,7 @@ test('GS6: 직원이 열을 끼워 넣어도 헤더 기준으로 올바른 칸�
   assert.equal(r.ok, true);
   const written = sheet._grid.find(x => x[1] === 'RAIM-CCC333');
   assert.ok(written, '신청코드가 밀린 위치(2열)에 들어가야 한다');
-  assert.equal(written[7], 'Aiko', '이름도 같은 만큼 밀린 위치에 정확히 들어가야 한다');
+  assert.equal(written[4], 'Aiko', '이름도 같은 만큼 밀린 위치에 정확히 들어가야 한다');
 });
 
 test('GS7: 필요한 열이 없고 데이터도 없으면 헤더를 자동 재설정한다', () => {
