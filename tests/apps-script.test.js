@@ -92,12 +92,12 @@ function run(scriptPath, { secret = 'S3CRET', sheet = makeSheet('예약신청') 
 
 
 const SCRIPT = path.join(__dirname, '..', 'scripts', 'apps-script', 'Code.gs');
-const HEADERS = ['신청코드', '상태', '방문일', '이름', '국가', '회차', '시간', '예약 인원',
+const HEADERS = ['신청코드', '상태', '방문일', '이름', '국가', '전시', '회차', '시간', '예약 인원', '이메일',
   '신청일시', '처리일시', '처리자', '거절사유', '최종동기화'];
 const row = (over = {}) => ({
   code: 'RAIM-AAA111', status: '대기(검토중)', visit_date: '2026-09-02', session: '15:40–16:30',
-  session: '[5회차] 상설전시해설', time: '15:40~16:20',
-  name: 'Aiko', country: 'Japan',
+  tour_type: '상설', session: '5회차', time: '15:40~16:20',
+  name: 'Aiko', country: 'Japan', email: 'a@example.com',
   party_size: 2, created_at: '2026-08-13 01:00:00', decided_at: '', decided_by: '', decline_reason: '',
   ...over,
 });
@@ -118,7 +118,7 @@ test('GS2: 같은 코드를 다시 보내면 행이 늘지 않고 갱신된다 (
   assert.deepEqual([r.appended, r.updated], [0, 1]);
   assert.equal(h.sheet._grid.length, 2, '중복 행이 생기면 안 된다');
   assert.equal(h.sheet._grid[1][1], '확정');
-  assert.equal(h.sheet._grid[1][10], 'admin');
+  assert.equal(h.sheet._grid[1][12], 'admin');
 });
 
 test('GS3: 비밀키가 틀리거나 없으면 거부한다 (웹앱이 "모든 사용자" 공개라 유일한 방어선)', () => {
@@ -288,7 +288,8 @@ test('GS18: 필요한 열이 빠진 옛 헤더는 데이터가 없을 때 새 �
   assert.equal(r.ok, true, '데이터가 없으면 헤더를 새로 깔고 진행');
   assert.deepEqual(sheet._grid[0].slice(0, HEADERS.length), HEADERS, '새 헤더로 교체');
   const line = sheet._grid[1];
-  assert.equal(line[HEADERS.indexOf('회차')], '[5회차] 상설전시해설');
+  assert.equal(line[HEADERS.indexOf('전시')], '상설');
+  assert.equal(line[HEADERS.indexOf('회차')], '5회차');
   assert.equal(line[HEADERS.indexOf('시간')], '15:40~16:20');
   assert.equal(line[HEADERS.indexOf('이름')], 'Aiko');
 });

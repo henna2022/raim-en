@@ -111,8 +111,9 @@ test('SH1: 신청이 접수되면 시트에 한 줄이 올라가고 동기화 �
   assert.equal(sent.length, 1, '신청 1건당 1행');
   assert.equal(sent[0].status, '대기(검토중)');
   assert.equal(sent[0].visit_date, r.date);
-  assert.match(sent[0].session, /^\[\d+회차\] (상설|기획)전시해설$/, '회차는 "[5회차] 상설전시해설" 형태');
-  assert.match(sent[0].time, /^\d{2}:\d{2}~\d{2}:\d{2}$/, '시간은 별도 열로 분리');
+  assert.match(sent[0].tour_type, /^(상설|기획)$/, '전시 구분은 별도 열');
+  assert.match(sent[0].session, /^\d+회차$/, '회차는 번호만');
+  assert.match(sent[0].time, /^\d{2}:\d{2}~\d{2}:\d{2}$/, '시간도 별도 열');
   assert.equal(syncFlag(r.code), 1);
   // 비밀키가 실려 나가야 Apps Script가 통과시킨다
   assert.equal(mock.requests.at(-1).secret, mock.secret);
@@ -188,19 +189,17 @@ test('SH5: 웹훅이 200이지만 ok:false로 거부하면 성공으로 취급�
   assert.equal(syncFlag(r.code), 1);
 });
 
-test('SH6: 요청사항과 언어는 시트로 아예 나가지 않는다 (개인정보 최소수집)', async () => {
+test('SH6: 요청사항 자유입력은 시트로 나가지 않는다 (민감정보 차단)', async () => {
   mock.mode = 'ok';
   const email = uniqueEmail();
   const r = await book({ email, name: 'Formula Test', notes: '=HYPERLINK("http://evil","x")' });
   const sent = rowsSentFor(r.code)[0];
   assert.equal(sent.name, 'Formula Test');
-  // 개인정보 최소수집: 이메일·요청사항·언어는 시트로 전송하지 않는다.
-  assert.equal(sent.email, undefined, '이메일은 페이로드에 없어야 한다');
+  assert.equal(sent.email, email, '이메일은 시트에 포함된다(직원 연락용)');
+  // 자유입력·언어는 여전히 전송하지 않는다.
   assert.equal(sent.notes, undefined, '요청사항은 페이로드에 없어야 한다');
   assert.equal(sent.language, undefined, '언어도 더 이상 보내지 않는다');
-  const dump = JSON.stringify(sent);
-  assert.ok(!dump.includes('HYPERLINK'), '자유입력 내용이 어떤 필드로도 새면 안 된다');
-  assert.ok(!dump.includes(email), '이메일이 어떤 필드로도 새면 안 된다');
+  assert.ok(!JSON.stringify(sent).includes('HYPERLINK'), '자유입력 내용이 어떤 필드로도 새면 안 된다');
 });
 
 test('SH8: 보존기한이 지나 파기되면 시트에서도 삭제된다', async () => {

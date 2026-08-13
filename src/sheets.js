@@ -34,25 +34,25 @@ const STATUS_LABEL = {
 };
 
 // 예약 행(reservations JOIN slots) → 시트 한 줄.
-// 개인정보 최소수집: 이메일과 요청사항(자유입력)은 시트로 보내지 않는다. 연락과
-// 상세 확인은 관리자 페이지에서 하며, 특히 자유입력에 휠체어·알레르기 같은 건강
-// 정보가 섞이면 민감정보가 되어 접속기록 보관기간이 2년으로 늘고 유출 시 신고
-// 기준도 달라진다. 전시 구분은 회차 문구에 이미 들어 있어 별도 열을 두지 않는다.
+// 요청사항(자유입력)은 시트로 보내지 않는다 — 휠체어·알레르기 같은 건강 정보가
+// 섞이면 민감정보가 되어 접속기록 보관기간이 2년으로 늘고 유출 시 신고 기준도
+// 달라지기 때문. 상세는 관리자 페이지에서 확인한다.
 function toRow(r) {
-  // 회차와 시간은 열을 나눈다 — 시트에서 시간대별로 정렬·필터하려면 시간이 따로
-  // 있어야 한다. 회차 번호는 그 날짜 기준으로 계산한다: 기획전시는 주말에만 09:30이
-  // 열려 같은 시각이라도 요일에 따라 번호가 달라지기 때문.
+  // 전시 구분·회차·시간을 각각 열로 나눈다 — 시트에서 전시별로 필터하거나 시간대로
+  // 정렬하려면 값이 따로 있어야 한다. 회차 번호는 그 날짜 기준으로 계산한다:
+  // 기획전시는 주말에만 09:30이 열려 같은 시각이라도 요일에 따라 번호가 달라진다.
   const ordinal = sessionOrdinal(r.visit_date, r.tour_type, r.slot_id);
-  const kind = `${TOUR_SHORT[r.tour_type] || r.tour_type}전시해설`;
   return {
     code: r.code,
     status: STATUS_LABEL[r.status] || r.status,
     visit_date: r.visit_date,
     name: r.name,
     country: r.country,
-    session: ordinal ? `[${ordinal}회차] ${kind}` : kind,
+    tour_type: TOUR_SHORT[r.tour_type] || r.tour_type,
+    session: ordinal ? `${ordinal}회차` : '',
     time: `${r.start_time}~${r.end_time}`,
     party_size: r.party_size,
+    email: r.email,
     created_at: r.created_at,
     decided_at: r.decided_at || '',
     decided_by: r.decided_by || '',
