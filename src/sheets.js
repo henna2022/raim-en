@@ -14,7 +14,9 @@ const { db } = require('./db');
 const WEBHOOK_URL = (process.env.SHEETS_WEBHOOK_URL || '').trim();
 const WEBHOOK_SECRET = process.env.SHEETS_WEBHOOK_SECRET || '';
 // 동기화 루프에서 쓰는 값. 요청 경로는 await 하지 않으므로 방문자 체감과 무관하다.
-const TIMEOUT_MS = Number(process.env.SHEETS_TIMEOUT_MS || 15000);
+// Apps Script는 콜드 스타트가 있어 첫 호출이 수십 초 걸리기도 한다 — 실측에서
+// 30초를 넘긴 적이 있어 넉넉하게 잡는다.
+const TIMEOUT_MS = Number(process.env.SHEETS_TIMEOUT_MS || 45000);
 const BATCH = 50;
 
 const enabled = !!(WEBHOOK_URL && WEBHOOK_SECRET);

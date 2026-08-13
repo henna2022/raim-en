@@ -12,6 +12,9 @@ const path = require('node:path');
 
 function makeSheet(name) {
   const grid = []; // grid[row-1][col-1]
+  // Apps Script에서는 getValue/setValue/getValues/setValues 한 번이 서버 왕복 한 번이다.
+  // 이 카운터가 곧 성능 지표다 — 셀 단위로 쓰면 배치가 실행 시간 제한에 걸린다.
+  const calls = { read: 0, write: 0 };
   const ensure = (r, c) => {
     while (grid.length < r) grid.push([]);
     const row = grid[r - 1];
@@ -23,9 +26,10 @@ function makeSheet(name) {
     getLastColumn: () => grid.reduce((m, r) => Math.max(m, r.length), 0),
     getRange(r, c, nr = 1, nc = 1) {
       return {
-        getValue: () => (grid[r - 1] && grid[r - 1][c - 1] !== undefined ? grid[r - 1][c - 1] : ''),
-        setValue: (v) => { ensure(r, c); grid[r - 1][c - 1] = v; },
+        getValue: () => { calls.read++; return grid[r - 1] && grid[r - 1][c - 1] !== undefined ? grid[r - 1][c - 1] : ''; },
+        setValue: (v) => { calls.write++; ensure(r, c); grid[r - 1][c - 1] = v; },
         getValues: () => {
+          calls.read++;
           const out = [];
           for (let i = 0; i < nr; i++) {
             const row = [];
@@ -38,6 +42,7 @@ function makeSheet(name) {
           return out;
         },
         setValues: (vals) => {
+          calls.write++;
           for (let i = 0; i < vals.length; i++) {
             for (let j = 0; j < vals[i].length; j++) { ensure(r + i, c + j); grid[r - 1 + i][c - 1 + j] = vals[i][j]; }
           }
@@ -49,6 +54,7 @@ function makeSheet(name) {
     deleteRow: (r) => { grid.splice(r - 1, 1); },
     setFrozenRows: () => {},
     _grid: grid,
+    _calls: calls,
   };
   return sheet;
 }
@@ -177,4 +183,40 @@ test('GS10: 없는 코드 삭제와 빈 요청은 조용히 처리된다', () =>
   assert.equal(r.ok, true);
   assert.equal(r.deleted, 0);
   assert.equal(h.post({ secret: 'S3CRET' }).ok, false, '보낼 것이 없으면 거부');
+});
+
+test('GS11: 한 줄을 쓸 때 서버 왕복이 몇 번인지 (셀 단위 쓰기 회귀 방지)', () => {
+  // 실제 배포에서 확인된 문제: 셀마다 setValue를 부르면 16회 왕복이 되어
+  // 갱신 한 건이 30초를 넘겼다. 한 줄은 setValues 한 번으로 써야 한다.
+  const h = run(SCRIPT);
+  h.post({ secret: 'S3CRET', rows: [row()] });      // 헤더 생성 + append
+  const beforeWrites = h.sheet._calls.write;
+  h.post({ secret: 'S3CRET', rows: [row({ status: '확정' })] });  // 갱신 1건
+  const writes = h.sheet._calls.write - beforeWrites;
+  assert.ok(writes <= 2, `갱신 1건의 쓰기 왕복은 2회 이하여야 한다 (실제 ${writes}회)`);
+});
+
+test('GS12: 50건 배치의 왕복 횟수가 건수에 비례하는 수준을 넘지 않는다', () => {
+  const h = run(SCRIPT);
+  const rows = [];
+  for (let i = 0; i < 50; i++) rows.push(row({ code: `RAIM-B${String(i).padStart(3, '0')}` }));
+  const before = h.sheet._calls.read + h.sheet._calls.write;
+  const r = h.post({ secret: 'S3CRET', rows });
+  const total = h.sheet._calls.read + h.sheet._calls.write - before;
+  assert.equal(r.appended, 50);
+  // 건당 쓰기 1 + 확인용 읽기 1 수준. 건당 16회였다면 800을 넘는다.
+  assert.ok(total < 200, `50건 배치의 총 왕복은 200회 미만이어야 한다 (실제 ${total}회)`);
+});
+
+test('GS13: 갱신 시 우리 열이 아닌 칸(직원이 끼워 넣은 열)은 보존된다', () => {
+  const sheet = makeSheet('예약신청');
+  // 직원이 '신청코드' 뒤에 '담당자 메모' 열을 끼워 넣은 상황
+  sheet.appendRow(['신청코드', '담당자 메모', ...HEADERS.slice(1)]);
+  const h = run(SCRIPT, { sheet });
+  h.post({ secret: 'S3CRET', rows: [row()] });
+  const at = sheet._grid.findIndex(x => x[0] === 'RAIM-AAA111');
+  sheet._grid[at][1] = '전화 확인함';               // 직원이 메모 입력
+  h.post({ secret: 'S3CRET', rows: [row({ status: '확정' })] });  // 상태 갱신
+  assert.equal(sheet._grid[at][1], '전화 확인함', '직원이 쓴 열을 덮어쓰면 안 된다');
+  assert.equal(sheet._grid[at][2], '확정', '우리 열은 정상 갱신되어야 한다');
 });

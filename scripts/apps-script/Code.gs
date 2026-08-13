@@ -155,14 +155,37 @@ function upsertRow_(sheet, col, index, row, result) {
   }
 
   if (at) {
-    for (var i = 0; i < HEADERS.length; i++) sheet.getRange(at, col.map[HEADERS[i]]).setValue(values[i]);
+    writeRow_(sheet, col, at, values, false);
     result.updated++;
   } else {
     var newRow = sheet.getLastRow() + 1;
-    for (var j = 0; j < HEADERS.length; j++) sheet.getRange(newRow, col.map[HEADERS[j]]).setValue(values[j]);
+    writeRow_(sheet, col, newRow, values, true);
     index[code] = newRow;
     result.appended++;
   }
+}
+
+// 한 줄을 setValues 한 번으로 쓴다. 셀마다 setValue를 부르면 호출당 서버 왕복이라
+// 16배 느려지고, 50건 배치에서는 실행 시간 제한에 걸린다.
+// 우리 열이 연속이 아닐 수 있으므로(직원이 중간에 열을 끼워 넣은 경우) 최소~최대
+// 열 구간을 통째로 다루되, 갱신 시에는 기존 값을 먼저 읽어 우리 것이 아닌 칸을
+// 덮어쓰지 않는다.
+function writeRow_(sheet, col, rowNum, values, isNew) {
+  var cols = [];
+  for (var i = 0; i < HEADERS.length; i++) cols.push(col.map[HEADERS[i]]);
+  var min = Math.min.apply(null, cols);
+  var max = Math.max.apply(null, cols);
+  var span = max - min + 1;
+
+  var line;
+  if (isNew || rowNum > sheet.getLastRow()) {
+    line = [];
+    for (var k = 0; k < span; k++) line.push('');
+  } else {
+    line = sheet.getRange(rowNum, min, 1, span).getValues()[0];
+  }
+  for (var j = 0; j < HEADERS.length; j++) line[cols[j] - min] = values[j];
+  sheet.getRange(rowNum, min, 1, span).setValues([line]);
 }
 
 // 보존기한이 지나 raim-en에서 삭제된 건을 시트에서도 지운다.
