@@ -153,8 +153,11 @@
           </div>
         </article>
 
+        <%# 사진 없음: 기존 raimplay.jpg 는 실제로 다목적실 1·2를 찍은 것이라 제거했다.
+            RAIM PLAY 실사진이 확보되면 img/raimplay.jpg 로 넣고 아래 no-photo 블록을
+            <img> 태그로 되돌리면 된다. %>
         <article class="slide">
-          <img src="/img/raimplay.jpg" alt="RAIM PLAY experience room with green walls and interactive stations" loading="lazy" decoding="async" width="800" height="470">
+          <div class="slide-nophoto" aria-hidden="true"><span>RAIM PLAY</span></div>
           <div class="slide-body">
             <h3>RAIM PLAY <span class="badge walkin">WALK-IN</span></h3>
             <p>A drop-in creative experience on 4F where you explore robots and AI through play, together with
