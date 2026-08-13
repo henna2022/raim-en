@@ -23,17 +23,17 @@
  * 코드를 수정하면 반드시 "배포 관리 > 편집 > 새 버전"으로 다시 배포해야 반영됩니다.
  *
  * ── 개인정보 주의 ──────────────────────────────────────────
- * 이 시트에는 방문객의 이름·이메일·국가가 들어갑니다. 요청사항 원문은 의도적으로
- * 보내지 않고 "있음/없음"만 표시하며, 상세는 raim-en 관리자 페이지에서 확인합니다
- * (자유입력에 건강 관련 정보가 섞이면 민감정보가 되어 규제 수준이 올라가기 때문).
+ * 이 시트에는 방문객의 이름·이메일·국가가 들어갑니다. 요청사항(자유입력)은 아예
+ * 보내지 않으며 상세는 raim-en 관리자 페이지에서 확인합니다 — 자유입력에 건강 관련
+ * 정보가 섞이면 민감정보가 되어 규제 수준이 올라가기 때문입니다.
  * 시트는 링크 공유하지 말고 담당자 계정에만 개별 공유하세요.
  */
 
 var SHEET_NAME = '예약신청';
 
 var HEADERS = [
-  '신청코드', '상태', '방문일', '회차', '전시', '언어',
-  '이름', '이메일', '국가', '인원', '요청사항',
+  '신청코드', '상태', '방문일', '전시', '회차', '시간',
+  '이름', '이메일', '국가', '인원',
   '신청일시', '처리일시', '처리자', '거절사유', '최종동기화',
 ];
 var KEY_HEADER = '신청코드';
@@ -69,7 +69,16 @@ function doPost(e) {
     try {
       var sheet = getSheet_();
       var col = resolveColumns_(sheet);
-      if (!col) return json_({ ok: false, error: 'header mismatch — 헤더 행을 원래대로 되돌리세요' });
+      if (!col) {
+        // 데이터가 한 줄도 없으면 헤더만 남은 상태다(예: 컬럼 구성이 바뀐 새 버전을
+        // 처음 배포한 직후). 이때는 안전하게 헤더를 다시 깔고 진행한다.
+        // 데이터가 있으면 절대 건드리지 않고 거부한다.
+        if (sheet.getLastRow() <= 1) {
+          resetHeader_(sheet);
+          col = resolveColumns_(sheet);
+        }
+        if (!col) return json_({ ok: false, error: 'header mismatch — 헤더 행을 원래대로 되돌리세요' });
+      }
 
       var result = { ok: true, appended: 0, updated: 0, deleted: 0, failed: [] };
       var index = readKeyColumn_(sheet, col.key);
@@ -113,6 +122,15 @@ function getSheet_() {
     sheet.setFrozenRows(1);
   }
   return sheet;
+}
+
+// 헤더만 있고 데이터가 없는 시트를 현재 컬럼 구성으로 다시 깐다.
+// 이전 버전이 남긴 옛 헤더를 지우기 위해 기존 폭까지 비운 뒤 새로 쓴다.
+function resetHeader_(sheet) {
+  var oldWidth = Math.max(sheet.getLastColumn(), HEADERS.length);
+  sheet.getRange(1, 1, 1, oldWidth).clearContent();
+  sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]).setFontWeight('bold');
+  sheet.setFrozenRows(1);
 }
 
 // 헤더 이름으로 열 위치를 찾는다. 직원이 열을 옮기거나 끼워 넣어도 엉뚱한 칸에
@@ -248,8 +266,8 @@ function deleteRows_(sheet, keyCol, codes, result) {
 
 function toValues_(r) {
   return [
-    str_(r.code), str_(r.status), str_(r.visit_date), str_(r.session), str_(r.tour_type), str_(r.language),
-    str_(r.name), str_(r.email), str_(r.country), r.party_size == null ? '' : Number(r.party_size), str_(r.notes),
+    str_(r.code), str_(r.status), str_(r.visit_date), str_(r.tour_type), str_(r.session), str_(r.time),
+    str_(r.name), str_(r.email), str_(r.country), r.party_size == null ? '' : Number(r.party_size),
     str_(r.created_at), str_(r.decided_at), str_(r.decided_by), str_(r.decline_reason), new Date(),
   ];
 }

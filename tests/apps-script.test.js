@@ -25,19 +25,19 @@ function makeSheet(name) {
     getLastRow: () => grid.length,
     getLastColumn: () => grid.reduce((m, r) => Math.max(m, r.length), 0),
     getRange(r, c, nr = 1, nc = 1) {
-      return {
+      const range = {
         getValue: () => { calls.read++; return grid[r - 1] && grid[r - 1][c - 1] !== undefined ? grid[r - 1][c - 1] : ''; },
-        setValue: (v) => { calls.write++; ensure(r, c); grid[r - 1][c - 1] = v; },
+        setValue: (v) => { calls.write++; ensure(r, c); grid[r - 1][c - 1] = v; return range; },
         getValues: () => {
           calls.read++;
           const out = [];
           for (let i = 0; i < nr; i++) {
-            const row = [];
+            const line = [];
             for (let j = 0; j < nc; j++) {
               const g = grid[r - 1 + i];
-              row.push(g && g[c - 1 + j] !== undefined ? g[c - 1 + j] : '');
+              line.push(g && g[c - 1 + j] !== undefined ? g[c - 1 + j] : '');
             }
-            out.push(row);
+            out.push(line);
           }
           return out;
         },
@@ -46,9 +46,16 @@ function makeSheet(name) {
           for (let i = 0; i < vals.length; i++) {
             for (let j = 0; j < vals[i].length; j++) { ensure(r + i, c + j); grid[r - 1 + i][c - 1 + j] = vals[i][j]; }
           }
+          return range;
         },
-        setFontWeight: () => {},
+        clearContent: () => {
+          calls.write++;
+          for (let i = 0; i < nr; i++) for (let j = 0; j < nc; j++) { const g = grid[r - 1 + i]; if (g) g[c - 1 + j] = ''; }
+          return range;
+        },
+        setFontWeight: () => range,
       };
+      return range;
     },
     appendRow: (vals) => { grid.push([...vals]); },
     deleteRow: (r) => { calls.write++; grid.splice(r - 1, 1); },
@@ -85,12 +92,13 @@ function run(scriptPath, { secret = 'S3CRET', sheet = makeSheet('예약신청') 
 
 
 const SCRIPT = path.join(__dirname, '..', 'scripts', 'apps-script', 'Code.gs');
-const HEADERS = ['신청코드', '상태', '방문일', '회차', '전시', '언어', '이름', '이메일', '국가',
-  '인원', '요청사항', '신청일시', '처리일시', '처리자', '거절사유', '최종동기화'];
+const HEADERS = ['신청코드', '상태', '방문일', '전시', '회차', '시간', '이름', '이메일', '국가',
+  '인원', '신청일시', '처리일시', '처리자', '거절사유', '최종동기화'];
 const row = (over = {}) => ({
   code: 'RAIM-AAA111', status: '대기(검토중)', visit_date: '2026-09-02', session: '15:40–16:30',
-  tour_type: '상설전시', language: '영어', name: 'Aiko', email: 'a@example.com', country: 'Japan',
-  party_size: 2, notes: '', created_at: '2026-08-13 01:00:00', decided_at: '', decided_by: '', decline_reason: '',
+  tour_type: '상설전시', session: '[5회차] 상설전시해설', time: '15:40~16:20',
+  name: 'Aiko', email: 'a@example.com', country: 'Japan',
+  party_size: 2, created_at: '2026-08-13 01:00:00', decided_at: '', decided_by: '', decline_reason: '',
   ...over,
 });
 
@@ -110,7 +118,7 @@ test('GS2: 같은 코드를 다시 보내면 행이 늘지 않고 갱신된다 (
   assert.deepEqual([r.appended, r.updated], [0, 1]);
   assert.equal(h.sheet._grid.length, 2, '중복 행이 생기면 안 된다');
   assert.equal(h.sheet._grid[1][1], '확정');
-  assert.equal(h.sheet._grid[1][13], 'admin');
+  assert.equal(h.sheet._grid[1][12], 'admin');
 });
 
 test('GS3: 비밀키가 틀리거나 없으면 거부한다 (웹앱이 "모든 사용자" 공개라 유일한 방어선)', () => {
@@ -147,14 +155,14 @@ test('GS6: 직원이 열을 끼워 넣어도 헤더 기준으로 올바른 칸�
   assert.equal(written[7], 'Aiko', '이름도 같은 만큼 밀린 위치에 정확히 들어가야 한다');
 });
 
-test('GS7: 헤더가 훼손되면 아무것도 쓰지 않고 거부한다', () => {
+test('GS7: 필요한 열이 없고 데이터도 없으면 헤더를 자동 재설정한다', () => {
   const sheet = makeSheet('예약신청');
-  sheet.appendRow(['엉뚱한', '헤더']);
+  sheet.appendRow(['엉뚱한', '헤더']); // 우리 열 이름이 하나도 없음
   const h = run(SCRIPT, { sheet });
   const r = h.post({ secret: 'S3CRET', rows: [row()] });
-  assert.equal(r.ok, false);
-  assert.match(r.error, /header mismatch/);
-  assert.equal(sheet._grid.length, 1, '거부 시 데이터를 쓰면 안 된다');
+  assert.equal(r.ok, true, '빈 시트라면 헤더를 새로 깔고 진행해야 한다');
+  assert.deepEqual(sheet._grid[0].slice(0, HEADERS.length), HEADERS);
+  assert.equal(r.appended, 1);
 });
 
 test('GS8: 보존기한 만료 삭제는 대상만 지우고 나머지는 남긴다', () => {
@@ -265,4 +273,33 @@ test('GS17: 같은 배치에 같은 코드가 두 번 오면 중복 행이 생�
   assert.equal(r.appended, 1, '중복 코드는 한 줄로 합쳐져야 한다');
   assert.equal(h.sheet._grid.length, 2, '헤더 + 1행');
   assert.equal(h.sheet._grid[1][1], '확정', '나중 값이 반영되어야 한다');
+});
+
+test('GS18: 필요한 열이 빠진 옛 헤더는 데이터가 없을 때 새 구성으로 재설정된다', () => {
+  // 실제 상황: 이미 배포해 둔 시트에 16열 헤더가 남아 있다. 새 열 이름 14개를 모두
+  // 포함한 상위집합이므로 재설정 없이 그대로 동작해야 하고, 값은 이름이 붙은 칸에
+  // 들어가야 한다(언어·요청사항 칸은 빈 채로 남는다).
+  const OLD = ['신청코드', '상태', '방문일', '회차', '전시', '언어', '이름', '이메일', '국가',
+    '인원', '요청사항', '신청일시', '처리일시', '처리자', '거절사유', '최종동기화'];
+  const sheet = makeSheet('예약신청');
+  sheet.appendRow(OLD);
+  const h = run(SCRIPT, { sheet });
+  const r = h.post({ secret: 'S3CRET', rows: [row()] });
+  assert.equal(r.ok, true, '데이터가 없으면 헤더를 새로 깔고 진행');
+  assert.deepEqual(sheet._grid[0].slice(0, HEADERS.length), HEADERS, '새 헤더로 교체');
+  const line = sheet._grid[1];
+  assert.equal(line[HEADERS.indexOf('회차')], '[5회차] 상설전시해설');
+  assert.equal(line[HEADERS.indexOf('시간')], '15:40~16:20');
+  assert.equal(line[HEADERS.indexOf('이름')], 'Aiko');
+});
+
+test('GS19: 데이터가 있는 시트는 헤더가 안 맞아도 절대 건드리지 않는다', () => {
+  const sheet = makeSheet('예약신청');
+  sheet.appendRow(['엉뚱한', '헤더']);
+  sheet.appendRow(['소중한', '데이터']);
+  const h = run(SCRIPT, { sheet });
+  const r = h.post({ secret: 'S3CRET', rows: [row()] });
+  assert.equal(r.ok, false);
+  assert.match(r.error, /header mismatch/);
+  assert.deepEqual(sheet._grid[1], ['소중한', '데이터'], '기존 데이터가 보존되어야 한다');
 });

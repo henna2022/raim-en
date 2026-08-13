@@ -74,6 +74,22 @@ function sessionsForDate(dateStr) {
   return { closed: false, reason: '', sessions };
 }
 
+// 그 날짜에 운영되는 같은 전시 회차 중 몇 번째인지 (1부터). 기획전시는 주말에만
+// 09:30 회차가 열려 번호가 요일마다 달라지므로(평일 16:30=6회차, 주말 16:30=7회차)
+// 고정 번호를 쓸 수 없고 날짜별로 계산해야 한다. 찾지 못하면 null.
+function sessionOrdinal(dateStr, tourType, slotId) {
+  if (!isValidDateStr(dateStr)) return null;
+  const { openOverride } = closureInfo(dateStr);
+  let wd = String(weekdayOf(dateStr));
+  // 공휴일 대체로 개관한 월요일은 화요일 시간표를 따른다(sessionsForDate와 동일 규칙).
+  if (openOverride && wd === '1') wd = '2';
+  const sameDay = db.prepare(
+    'SELECT id, weekdays FROM slots WHERE active = 1 AND tour_type = ? ORDER BY start_time'
+  ).all(tourType).filter(s => s.weekdays.split(',').includes(wd));
+  const idx = sameDay.findIndex(s => s.id === slotId);
+  return idx === -1 ? null : idx + 1;
+}
+
 // ---------- English tour single-source-of-truth (A5) ----------
 const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -150,6 +166,6 @@ const STATUS_BADGE = {
 
 module.exports = {
   DATE_RE, SLA_HOURS, isValidDateStr, todayStr, nowHM, weekdayOf, addDays,
-  closureInfo, sessionsForDate, genCode, getEnglishTours,
+  closureInfo, sessionsForDate, sessionOrdinal, genCode, getEnglishTours,
   getReservation, getReservationByCode, STATUS_BADGE, getSettings,
 };

@@ -177,24 +177,32 @@ function seed() {
   if (slotCount === 0) {
     // Official timetable (see 관람시간표). Tue–Sun = '2,3,4,5,6,0'. Museum closed Mondays.
     // English docent (notice 2026-05-29): permanent Wed 15:40, special Wed 16:30.
+    // 모든 회차는 40분. 해설은 한국어가 기본이고, 수요일 상설 5회차(15:40)와
+    // 기획 6회차(16:30)만 영어 도슨트다 — 그 외 회차의 외국인 방문객에게는
+    // 영어 녹음 오디오가이드(MP3)를 제공한다.
     const TUE_SUN = '2,3,4,5,6,0';
     const TUE_SUN_NO_WED = '2,4,5,6,0';
     const WED = '3';
+    const WEEKEND = '6,0'; // 토·일
     const rows = [
+      // 상설전시 — 화~일 6회차, 매일 동일
       ['permanent', '09:40', '10:20', 'ko', TUE_SUN, 'Permanent Exhibition Tour #1'],
-      ['permanent', '10:40', '11:30', 'ko', TUE_SUN, 'Permanent Exhibition Tour #2'],
-      ['permanent', '12:10', '13:00', 'ko', TUE_SUN, 'Permanent Exhibition Tour #3'],
-      ['permanent', '14:40', '15:30', 'ko', TUE_SUN, 'Permanent Exhibition Tour #4'],
-      ['permanent', '15:40', '16:30', 'ko', TUE_SUN_NO_WED, 'Permanent Exhibition Tour #5'],
-      ['permanent', '15:40', '16:30', 'en', WED, 'Permanent Exhibition Tour — ENGLISH docent'],
+      ['permanent', '10:40', '11:20', 'ko', TUE_SUN, 'Permanent Exhibition Tour #2'],
+      ['permanent', '12:10', '12:50', 'ko', TUE_SUN, 'Permanent Exhibition Tour #3'],
+      ['permanent', '14:40', '15:20', 'ko', TUE_SUN, 'Permanent Exhibition Tour #4'],
+      ['permanent', '15:40', '16:20', 'ko', TUE_SUN_NO_WED, 'Permanent Exhibition Tour #5'],
+      ['permanent', '15:40', '16:20', 'en', WED, 'Permanent Exhibition Tour #5 — ENGLISH docent'],
       ['permanent', '16:40', '17:20', 'ko', TUE_SUN, 'Permanent Exhibition Tour #6'],
-      ['special', '10:30', '11:10', 'ko', TUE_SUN, 'Special Exhibition Tour #1'],
-      ['special', '11:30', '12:10', 'ko', TUE_SUN, 'Special Exhibition Tour #2'],
-      ['special', '13:30', '14:10', 'ko', TUE_SUN, 'Special Exhibition Tour #3'],
-      ['special', '14:30', '15:10', 'ko', TUE_SUN, 'Special Exhibition Tour #4'],
-      ['special', '15:30', '16:10', 'ko', TUE_SUN, 'Special Exhibition Tour #5'],
-      ['special', '16:30', '17:10', 'ko', TUE_SUN_NO_WED, 'Special Exhibition Tour #6'],
-      ['special', '16:30', '17:10', 'en', WED, 'Special Exhibition Tour — ENGLISH docent'],
+      // 기획전시 — 09:30은 주말만 운영. 그래서 회차 번호가 평일/주말에 달라진다
+      // (평일 16:30 = 6회차, 주말 16:30 = 7회차). 번호는 날짜별로 계산한다.
+      ['special', '09:30', '10:10', 'ko', WEEKEND, 'Special Exhibition Tour 09:30 (weekends only)'],
+      ['special', '10:30', '11:10', 'ko', TUE_SUN, 'Special Exhibition Tour 10:30'],
+      ['special', '11:30', '12:10', 'ko', TUE_SUN, 'Special Exhibition Tour 11:30'],
+      ['special', '13:30', '14:10', 'ko', TUE_SUN, 'Special Exhibition Tour 13:30'],
+      ['special', '14:30', '15:10', 'ko', TUE_SUN, 'Special Exhibition Tour 14:30'],
+      ['special', '15:30', '16:10', 'ko', TUE_SUN, 'Special Exhibition Tour 15:30'],
+      ['special', '16:30', '17:10', 'ko', TUE_SUN_NO_WED, 'Special Exhibition Tour 16:30'],
+      ['special', '16:30', '17:10', 'en', WED, 'Special Exhibition Tour 16:30 — ENGLISH docent'],
     ];
     const ins = db.prepare('INSERT INTO slots (tour_type, start_time, end_time, language, weekdays, label) VALUES (?,?,?,?,?,?)');
     for (const r of rows) ins.run(...r);
@@ -248,6 +256,42 @@ function seed() {
   for (const [k, v] of Object.entries(defaults)) insSetting.run(k, v);
 }
 seed();
+
+// 일회성 시간표 정정 (기존 DB용). 초기 시드가 상설 4개 회차를 50분으로 넣었고,
+// 기획 주말 09:30 회차가 빠져 있었다. 실제 운영은 전 회차 40분이다.
+// 안전장치 두 겹: ① settings 플래그로 한 번만 실행 ② 예전 시드 값과 정확히
+// 일치할 때만 수정하므로, 직원이 Schedule에서 손본 회차는 건드리지 않는다.
+function correctScheduleTo40Minutes() {
+  const already = db.prepare(`SELECT 1 FROM settings WHERE key = 'schedule_40min_fix'`).get();
+  if (already) return;
+
+  const fix = db.prepare(
+    `UPDATE slots SET end_time = ? WHERE tour_type = ? AND start_time = ? AND end_time = ?`
+  );
+  const corrections = [
+    ['permanent', '10:40', '11:30', '11:20'],
+    ['permanent', '12:10', '13:00', '12:50'],
+    ['permanent', '14:40', '15:30', '15:20'],
+    ['permanent', '15:40', '16:30', '16:20'], // ko(수요일 제외) + en(수요일) 두 행 모두
+  ];
+  let changed = 0;
+  for (const [type, start, oldEnd, newEnd] of corrections) {
+    changed += fix.run(newEnd, type, start, oldEnd).changes;
+  }
+
+  const hasWeekendEarly = db.prepare(
+    `SELECT 1 FROM slots WHERE tour_type = 'special' AND start_time = '09:30'`
+  ).get();
+  if (!hasWeekendEarly) {
+    db.prepare(`INSERT INTO slots (tour_type, start_time, end_time, language, weekdays, label)
+                VALUES ('special','09:30','10:10','ko','6,0','Special Exhibition Tour 09:30 (weekends only)')`).run();
+    changed += 1;
+  }
+
+  db.prepare(`INSERT OR IGNORE INTO settings (key, value) VALUES ('schedule_40min_fix','1')`).run();
+  if (changed > 0) console.log(`[schedule] 시간표 정정 ${changed}건 적용 (전 회차 40분, 기획 주말 09:30 추가)`);
+}
+correctScheduleTo40Minutes();
 
 // ---------- settings helpers ----------
 function getSettings() {
