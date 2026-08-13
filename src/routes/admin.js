@@ -5,6 +5,7 @@ const {
   DATE_RE, SLA_HOURS, isValidDateStr, todayStr, weekdayOf, closureInfo, sessionsForDate, getReservation, STATUS_BADGE, getSettings,
 } = require('../helpers');
 const mailer = require('../mailer');
+const sheets = require('../sheets');
 const { rateLimit } = require('../ratelimit');
 
 const router = express.Router();
@@ -360,6 +361,7 @@ router.post('/reservations/:id/:action', async (req, res) => {
   }
 
   const updated = getReservation(r.id);
+  sheets.nudge();
   if (req.params.action === 'confirm') {
     const ics = mailer.icsForReservation(updated);
     await mailer.sendMail(

@@ -6,6 +6,7 @@ const {
   getReservationByCode, STATUS_BADGE, getSettings, getEnglishTours,
 } = require('../helpers');
 const mailer = require('../mailer');
+const sheets = require('../sheets');
 const { rateLimit } = require('../ratelimit');
 
 const router = express.Router();
@@ -140,6 +141,7 @@ router.post('/reserve', reserveLimiter, async (req, res) => {
     .run(code, form.slot_id, form.date, form.name, form.email, form.country, form.party_size, form.notes);
 
   const r = getReservationByCode(code);
+  sheets.nudge(); // await 하지 않는다 — 시트 지연이 방문자 응답을 늦추면 안 된다
   await mailer.sendMail(r.email, `[Seoul RAIM] Request received — ${r.code}`, mailer.requestReceivedEmail(r));
   const todayTag = r.visit_date === todayStr() ? '[오늘] ' : '';
   await mailer.notifyStaff(
@@ -182,6 +184,7 @@ router.post('/booking/cancel', cancelLimiter, async (req, res) => {
     db.prepare(`UPDATE reservations SET status='cancelled', release_needed=?, decided_at=datetime('now'), decided_by='visitor' WHERE id=?`)
       .run(needsRelease, r.id);
     const updated = getReservationByCode(code);
+    sheets.nudge();
     await mailer.sendMail(updated.email, `[Seoul RAIM] Reservation cancelled — ${updated.code}`, mailer.cancelledEmail(updated));
     if (needsRelease) {
       // Freed-but-still-blocked seats should go to waitlisted requests of the

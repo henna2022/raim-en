@@ -81,6 +81,15 @@ CREATE TABLE IF NOT EXISTS soldout (
   UNIQUE(date, slot_id)
 );
 
+-- 보존기한이 지나 파기된 예약을 Google 시트에서도 지우기 위한 큐. 시트가 잠시
+-- 죽어도 코드가 남아 다음 주기에 재시도되므로, DB에서만 지워지고 시트에는 개인정보가
+-- 남는 상황을 막는다(src/sheets.js).
+CREATE TABLE IF NOT EXISTS sheet_deletes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  code TEXT NOT NULL UNIQUE,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
@@ -118,6 +127,22 @@ ensureColumn('reservations', 'released_by', 'released_by TEXT');
 // Batch A: tracks whether the day-before-visit reminder email has been sent,
 // so sendReminders() never emails the same reservation twice.
 ensureColumn('reservations', 'reminder_sent', 'reminder_sent INTEGER NOT NULL DEFAULT 0');
+// Google 시트 미러 반영 여부. 0이면 유지보수 루프가 재전송한다(src/sheets.js).
+// 기본값 0이므로 시트를 나중에 연결해도 기존 예약이 자동으로 채워진다.
+ensureColumn('reservations', 'sheet_synced', 'sheet_synced INTEGER NOT NULL DEFAULT 0');
+
+// 상태나 개인정보가 바뀌면 자동으로 미러 대기열에 다시 넣는다. 새 코드 경로에서
+// sheets.nudge()를 부르는 걸 잊어도 시트가 조용히 낡지 않도록 하는 안전망.
+// `AFTER UPDATE OF <cols>`라서 sheet_synced 자체를 갱신할 때는 발화하지 않는다(무한루프 없음).
+db.exec(`
+CREATE TRIGGER IF NOT EXISTS trg_reservations_sheet_dirty
+AFTER UPDATE OF status, name, email, country, party_size, notes, visit_date, slot_id,
+                decided_at, decided_by, decline_reason
+ON reservations
+BEGIN
+  UPDATE reservations SET sheet_synced = 0 WHERE id = NEW.id;
+END;
+`);
 
 // ---------- password helpers ----------
 function hashPassword(password, salt) {

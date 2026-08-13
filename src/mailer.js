@@ -258,7 +258,7 @@ function staffReleaseEmail(r, waitlistCount = 0) {
 // so staff work a routine instead of reacting to per-event notifications.
 // data: { pending: rows+age_hours, releaseQueue: rows(+waitlist_count), todaysCount, waitlist: rows, slaHours }
 function digestEmail(data) {
-  const { pending, releaseQueue, todaysCount, waitlist = [], slaHours } = data;
+  const { pending, releaseQueue, todaysCount, waitlist = [], slaHours, sheetPending = 0 } = data;
   const lateCount = pending.filter(p => p.age_hours >= slaHours).length;
 
   const pendingRows = pending.map(r => `
@@ -302,7 +302,12 @@ function digestEmail(data) {
       <table style="width:100%;border-collapse:collapse;font-size:13px;">${releaseRows}</table>` : ''}
     ${waitlist.length > 0 ? `
       <h3 style="font-size:14px;margin:18px 0 6px;color:#7c3aed;">대기자 — 방문일 전에 승격 또는 거절 필요</h3>
-      <table style="width:100%;border-collapse:collapse;font-size:13px;">${waitlistRows}</table>` : ''}`);
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">${waitlistRows}</table>` : ''}
+    ${sheetPending > 0 ? `
+      <div style="background:#fdf5e0;border-radius:8px;padding:12px 16px;margin-top:18px;font-size:13px;color:#a5680a;">
+        ⚠️ Google 시트에 아직 반영되지 않은 신청이 <strong>${sheetPending}건</strong> 있습니다.
+        시트만 보고 계시면 누락될 수 있으니 관리자 페이지를 확인하세요. (자동 재시도 중)
+      </div>` : ''}`);
 }
 
 async function notifyStaff(subject, html) {

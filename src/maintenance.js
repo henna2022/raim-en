@@ -2,6 +2,7 @@
 const { db, getSettings, setSetting } = require('./db');
 const { todayStr, addDays, nowHM, SLA_HOURS } = require('./helpers');
 const mailer = require('./mailer');
+const sheets = require('./sheets');
 
 // Personal-data retention: reservations (and the emails that quote them) are kept
 // for `retention_days` after the visit date, then deleted. This is what makes the
@@ -17,6 +18,14 @@ function purgeOldData() {
   const noshowDays = Math.max(1, Number(settings.noshow_retention_days || 365));
   const cutoffGeneral = addDays(todayStr(), -days);
   const cutoffNoshow = addDays(todayStr(), -Math.max(noshowDays, days));
+  // 지울 코드를 먼저 모아 시트 삭제 큐에 넣는다. DB에서만 지워지면 Google 시트에
+  // 방문객 개인정보가 무기한 남아, 공개 페이지의 보존기한 안내가 거짓이 된다.
+  const doomed = [
+    ...db.prepare(`SELECT code FROM reservations WHERE visit_date < ? AND status != 'no_show'`).all(cutoffGeneral),
+    ...db.prepare(`SELECT code FROM reservations WHERE status = 'no_show' AND visit_date < ?`).all(cutoffNoshow),
+  ].map(r => r.code);
+  sheets.queueDeletes(doomed);
+
   const reservations = db.prepare(`DELETE FROM reservations WHERE visit_date < ? AND status != 'no_show'`).run(cutoffGeneral);
   const noshows = db.prepare(`DELETE FROM reservations WHERE status = 'no_show' AND visit_date < ?`).run(cutoffNoshow);
   const emails = db.prepare(`DELETE FROM email_log WHERE created_at < datetime('now', ?)`).run(`-${days} days`);
@@ -134,7 +143,11 @@ async function sendDailyDigest() {
     + ` · yeyak 해제 ${releaseQueue.length}건`
     + (waitlist.length > 0 ? ` · 대기자 ${waitlist.length}명` : '');
   const result = await mailer.notifyStaff(subject,
-    mailer.digestEmail({ pending, releaseQueue, todaysCount, waitlist, slaHours: SLA_HOURS }));
+    mailer.digestEmail({
+      pending, releaseQueue, todaysCount, waitlist, slaHours: SLA_HOURS,
+      // 시트가 뒤처져 있으면 직원이 시트만 보고 신청을 놓칠 수 있으니 알린다.
+      sheetPending: sheets.pendingCount(),
+    }));
   if (result.skipped) {
     setSetting('digest_last_sent', today);
     console.log('[digest] staff_notify_email not set — skipped');
@@ -155,14 +168,21 @@ function start() {
   const safeReminders = () => sendReminders().catch(err => console.error('[reminder] failed', err));
   const safeExpire = () => expireWaitlist().catch(err => console.error('[waitlist] expire failed', err));
   const safeDigest = () => sendDailyDigest().catch(err => console.error('[digest] failed', err));
+  // 시트 미러는 실패해도 예약에 영향이 없으므로 조용히 재시도만 한다.
+  // 삭제(보존기한 만료)를 먼저 흘려보내야 파기된 개인정보가 시트에 남지 않는다.
+  const safeSheets = () => sheets.flushDeletes()
+    .then(() => sheets.syncPending())
+    .catch(err => console.error('[sheets] sync failed', err));
   purgeOldData(); // once at boot
   safeReminders(); // once at boot
   safeExpire(); // once at boot — before the digest so expired rows never show up in it
   safeDigest(); // once at boot
+  safeSheets(); // once at boot — backfills the sheet when it is newly connected
   setInterval(purgeOldData, 12 * 60 * 60 * 1000).unref(); // then twice a day
   setInterval(safeReminders, 60 * 60 * 1000).unref(); // then hourly
   setInterval(safeExpire, 60 * 60 * 1000).unref(); // then hourly
   setInterval(safeDigest, 60 * 60 * 1000).unref(); // then hourly
+  setInterval(safeSheets, 10 * 60 * 1000).unref(); // 시트는 더 자주 — 직원이 보는 화면이라 지연이 눈에 띈다
 }
 
 module.exports = { purgeOldData, sendReminders, expireWaitlist, sendDailyDigest, start };

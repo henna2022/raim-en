@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>외국인 도슨트 예약 운영방식 조사 결과 보고</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  @font-face {
+    font-family: 'Paperlogy';
+    src: url('./fonts/Paperlogy-4Regular.ttf') format('truetype');
+    font-weight: 400; font-style: normal; font-display: swap;
+  }
+  @font-face {
+    font-family: 'Paperlogy';
+    src: url('./fonts/Paperlogy-6SemiBold.ttf') format('truetype');
+    font-weight: 600; font-style: normal; font-display: swap;
+  }
+  @font-face {
+    font-family: 'Paperlogy';
+    src: url('./fonts/Paperlogy-7Bold.ttf') format('truetype');
+    font-weight: 700; font-style: normal; font-display: swap;
+  }
+  @font-face {
+    font-family: 'Paperlogy';
+    src: url('./fonts/Paperlogy-8ExtraBold.ttf') format('truetype');
+    font-weight: 800; font-style: normal; font-display: swap;
+  }
+
+  :root {
+    --ink: #1A1A1A;
+    --ink2: #4A4A4A;
+    --ink3: #767676;
+    --navy: #17365D;
+    --navy2: #2E5B8C;
+    --tint: #EEF2F7;
+    --line: #B9BEC6;
+    --line2: #D9DDE3;
+    --paper: #FFFFFF;
+  }
+
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0; padding: 0; background: #d9d9d9;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+
+  body {
+    font-family: 'Paperlogy', -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+    color: var(--ink); word-break: keep-all; overflow-wrap: break-word;
+    letter-spacing: 0.005em;
+  }
+
+  h1, h2, h3, p, ul, ol, li, table { margin: 0; padding: 0; }
+
+  @media screen {
+    body { padding: 24px 0; }
+    .page { margin: 0 auto 24px; box-shadow: 0 6px 28px rgba(0,0,0,0.22); }
+  }
+  @media print {
+    body { background: var(--paper); }
+    .page { box-shadow: none; margin: 0; }
+  }
+
+  .page {
+    width: 210mm; height: 297mm; background: var(--paper);
+    position: relative; overflow: hidden;
+    display: flex; flex-direction: column;
+    page-break-after: always; break-after: page;
+  }
+  .page:last-child { page-break-after: auto; break-after: auto; }
+
+  .page-inner {
+    flex: 1 1 auto; min-height: 0;
+    padding: 18mm 18mm 5mm 18mm;
+    overflow: hidden; display: flex; flex-direction: column;
+  }
+
+  .footer {
+    flex: 0 0 auto; display: flex; justify-content: space-between; align-items: center;
+    padding: 3mm 18mm 9mm 18mm; border-top: 1px solid var(--line2);
+    font-size: 8.2pt; color: var(--ink3);
+  }
+  .footer .right { font-variant-numeric: tabular-nums; }
+
+  /* ---------- 문서 제목부 ---------- */
+  .doc-head { text-align: center; margin-bottom: 9mm; }
+  .doc-org { font-size: 9.5pt; color: var(--ink2); font-weight: 600; letter-spacing: 0.06em; }
+  .doc-rule-top { height: 3px; background: var(--navy); margin: 3mm 0 0; }
+  .doc-title { font-size: 20pt; font-weight: 800; color: var(--navy); margin: 6mm 0 4mm; letter-spacing: -0.01em; }
+  .doc-sub { font-size: 10pt; color: var(--ink2); font-weight: 600; }
+  .doc-rule-bot { height: 1px; background: var(--line); margin-top: 6mm; }
+  .doc-meta { display: flex; justify-content: flex-end; gap: 10mm; font-size: 9pt; color: var(--ink2); margin-top: 3mm; }
+
+  /* ---------- 절 제목 ---------- */
+  .sec {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12.5pt; font-weight: 800; color: var(--navy);
+    margin: 8mm 0 3.5mm;
+  }
+  .sec:first-of-type { margin-top: 0; }
+  .sec .sq { width: 3.2mm; height: 3.2mm; background: var(--navy); flex: 0 0 auto; }
+
+  .sub { font-size: 10pt; font-weight: 700; color: var(--ink); margin: 5mm 0 2.5mm; }
+  .sub::before { content: "○ "; color: var(--navy2); }
+
+  p.txt { font-size: 9.6pt; line-height: 1.62; color: var(--ink); }
+  ul.lst { list-style: none; display: flex; flex-direction: column; gap: 3.5px; margin-top: 1.5mm; }
+  ul.lst li { font-size: 9.4pt; line-height: 1.55; padding-left: 4.5mm; position: relative; }
+  ul.lst li::before { content: "-"; position: absolute; left: 1.5mm; color: var(--ink3); }
+  ul.lst li b { color: var(--navy); }
+
+  /* ---------- 표 ---------- */
+  table.rpt { width: 100%; border-collapse: collapse; font-size: 9.2pt; }
+  table.rpt th, table.rpt td {
+    border: 1px solid var(--line); padding: 4.5px 6px; vertical-align: middle; line-height: 1.48;
+  }
+  table.rpt th {
+    background: var(--tint); color: var(--navy); font-weight: 700; text-align: center;
+  }
+  table.rpt td.c { text-align: center; }
+  table.rpt td.l { text-align: left; }
+  table.rpt td.hd { background: var(--tint); color: var(--navy); font-weight: 700; text-align: center; }
+  table.rpt.sm { font-size: 8.5pt; }
+  table.rpt.sm th, table.rpt.sm td { padding: 3.8px 5px; line-height: 1.42; }
+  table.rpt.xs { font-size: 8.1pt; }
+  table.rpt.xs th, table.rpt.xs td { padding: 3.4px 4.5px; line-height: 1.38; }
+  table.rpt td b, table.rpt td strong { color: var(--navy); }
+  table.rpt tr.own td { background: #F7F9FC; }
+
+  .tbl-title { font-size: 9.5pt; font-weight: 700; color: var(--ink); margin: 4mm 0 2mm; }
+  .tbl-title span { color: var(--ink3); font-weight: 400; font-size: 8.8pt; }
+
+  .note { font-size: 8.5pt; color: var(--ink2); line-height: 1.55; margin-top: 2.5mm; }
+  .note::before { content: "※ "; color: var(--ink3); }
+
+  .box {
+    border: 1px solid var(--line); border-left: 3px solid var(--navy);
+    background: #FAFBFD; padding: 4mm 5mm; font-size: 9.3pt; line-height: 1.6;
+  }
+  .box b { color: var(--navy); }
+  .box-title { display: block; font-weight: 800; color: var(--navy); margin-bottom: 1.5mm; font-size: 9.8pt; }
+
+  .mt-3 { margin-top: 3mm; }
+  .mt-5 { margin-top: 5mm; }
+  .mt-7 { margin-top: 7mm; }
+  strong { color: var(--navy); }
+</style>
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!-- 1쪽 -->
+<!-- ============================================================ -->
+<div class="page">
+  <div class="page-inner">
+    <div class="doc-head">
+      <div class="doc-org">서울로봇인공지능과학관 외국인 예약시스템 구축</div>
+      <div class="doc-rule-top"></div>
+      <h1 class="doc-title">외국인 도슨트 예약 운영방식 조사 결과 보고</h1>
+      <div class="doc-sub">국내외 주요 박물관·미술관·과학관 12개관 비교 및 개선 검토</div>
+      <div class="doc-rule-bot"></div>
+      <div class="doc-meta"><span>보고일: 2026. 8. 13.</span></div>
+    </div>
+
+    <div class="sec"><span class="sq"></span>Ⅰ. 조사 개요</div>
+    <table class="rpt">
+      <tr>
+        <td class="hd" style="width:16%">목적</td>
+        <td class="l">외국인 방문객 대상 해설 예약을 타 기관이 어떤 방식으로 운영하는지 확인하고,
+          구축 중인 영문 예약시스템의 개선사항과 결정 필요사항을 도출</td>
+      </tr>
+      <tr>
+        <td class="hd">대상</td>
+        <td class="l">총 12개관 (해외 10 : 메트로폴리탄, 대영박물관, MoMA, 루브르, 대만 국립고궁박물원, 스미소니언,
+          익스플로러토리엄, 필드뮤지엄, Museum of Us, 테이트 / 국내 2 : 전쟁기념관, 국립중앙박물관)</td>
+      </tr>
+      <tr>
+        <td class="hd">방법</td>
+        <td class="l">각 기관 공식 안내 페이지, 실제 신청 화면, 자주 묻는 질문, 개인정보 고지문 직접 확인</td>
+      </tr>
+      <tr>
+        <td class="hd">기준일</td>
+        <td class="l">2026. 8. 13. (요금·정원은 조사일 기준이며 시기에 따라 변동 가능)</td>
+      </tr>
+    </table>
+
+    <div class="sec"><span class="sq"></span>Ⅱ. 조사 결과 요약</div>
+    <table class="rpt">
+      <tr>
+        <th style="width:16%">구분</th>
+        <th style="width:12%">건수</th>
+        <th>내용</th>
+      </tr>
+      <tr>
+        <td class="hd">현행 수준</td>
+        <td class="c">-</td>
+        <td class="l">해외 주요관이 공통으로 쓰는 <b>접수 → 심사 → 확정 → 현장 → 사후</b>의 5단계 구조를
+          이미 모두 구현. 캘린더 첨부, 자가 조회·취소, 대기자 등록, 개인정보 자동 삭제는
+          <b>조사 대상 중 상위 수준</b></td>
+      </tr>
+      <tr>
+        <td class="hd">보완 필요</td>
+        <td class="c"><b>6건</b></td>
+        <td class="l">기능 부족이 아니라 <b>운영 규칙을 방문객에게 안내하지 않는 문제</b>.
+          6건 중 5건은 안내 문구 수정으로 처리 가능 (Ⅴ항)</td>
+      </tr>
+      <tr>
+        <td class="hd">결정 필요</td>
+        <td class="c"><b>3건</b></td>
+        <td class="l">좌석 배분, 내국인 참여 범위, 불참자 조치. 기술이 아닌 운영 방침 사항 (Ⅵ항)</td>
+      </tr>
+    </table>
+
+    <div class="sec"><span class="sq"></span>Ⅲ. 예약 운영방식 유형 구분</div>
+    <table class="rpt">
+      <tr>
+        <th style="width:10%">유형</th>
+        <th style="width:16%">예약 성립 시점</th>
+        <th style="width:36%">대표 기관</th>
+        <th>비고</th>
+      </tr>
+      <tr>
+        <td class="c">A. 무예약</td>
+        <td class="c">없음</td>
+        <td class="l">국립중앙박물관(영어 정시해설), 국립현대미술관, 국립고궁박물관</td>
+        <td class="l">국내 외국어 해설의 주류 방식</td>
+      </tr>
+      <tr>
+        <td class="c">B. 전화</td>
+        <td class="c">통화 시점</td>
+        <td class="l">국립중앙박물관(단체), 국립민속박물관, 경복궁, 리움</td>
+        <td class="l">언어별 전용 회선 운영</td>
+      </tr>
+      <tr>
+        <td class="c">C. 선착순</td>
+        <td class="c">제출 즉시</td>
+        <td class="l">서대문형무소역사관, 서울시립미술관, 국립과천과학관</td>
+        <td class="l">회원 가입·본인인증 전제로 외국인 이용 곤란</td>
+      </tr>
+      <tr class="own">
+        <td class="c"><b>D. 승인형</b></td>
+        <td class="c"><b>확정 통보 시점</b></td>
+        <td class="l"><b>해외 조사 대상 10개관 전부</b></td>
+        <td class="l"><b>우리 시스템이 채택한 방식</b></td>
+      </tr>
+    </table>
+    <p class="note">국내 온라인 예약은 대부분 한국 휴대폰 본인인증을 요구하여 단기체류·해외거주 외국인의 이용이 사실상 불가능하며,
+      이것이 국내 기관이 외국어 해설을 A·B형으로 운영해 온 원인임. 외국어 해설을 온라인으로 신청받아 승인하는
+      국내 기관은 조사 범위에서 확인되지 않음.</p>
+  </div>
+  <div class="footer">
+    <span>외국인 도슨트 예약 운영방식 조사 결과 보고 (2026. 8. 13.)</span>
+    <span class="right"><span class="page-num"></span> / <span class="page-total"></span></span>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 2쪽 -->
+<!-- ============================================================ -->
+<div class="page">
+  <div class="page-inner">
+    <div class="sec"><span class="sq"></span>Ⅳ. 기관별 운영 현황 비교</div>
+
+    <table class="rpt xs">
+      <tr>
+        <th style="width:15%">기관</th>
+        <th style="width:13%">접수 방법</th>
+        <th style="width:10%">신청 기한</th>
+        <th style="width:11%">답변 기한</th>
+        <th style="width:13%">정원</th>
+        <th>불참·지각 시 조치</th>
+      </tr>
+      <tr>
+        <td class="c">메트로폴리탄<br />(미국)</td>
+        <td class="l">온라인 신청서<br />(4종 분리)</td>
+        <td class="c">해설 3주<br />자율 1주</td>
+        <td class="c">미공개</td>
+        <td class="c">10~50명<br />25명 초과 분할</td>
+        <td class="l">30분 초과 지각 시 해설 취소, 반복 불참 시 예약 권한 제한, 결제액 환불 불가</td>
+      </tr>
+      <tr>
+        <td class="c">대영박물관<br />(영국)</td>
+        <td class="l">자율단체 온라인<br />해설 이메일</td>
+        <td class="c">7일 / 3주</td>
+        <td class="c">미공개</td>
+        <td class="c">10명 이상<br />해설 15~20명</td>
+        <td class="l">별도 제재 없음. 미예약 단체는 즉시 입장 미보장</td>
+      </tr>
+      <tr>
+        <td class="c">MoMA<br />(미국)</td>
+        <td class="l">외부 서식 서비스<br />(Wufoo)</td>
+        <td class="c">2주</td>
+        <td class="c">접수 순서대로</td>
+        <td class="c">10~50명</td>
+        <td class="l">2주 미만 신청 시 추가요금. 외부 인솔자의 관내 해설 금지</td>
+      </tr>
+      <tr>
+        <td class="c">루브르<br />(프랑스)</td>
+        <td class="l">온라인 신청서<br />(단일 창구)</td>
+        <td class="c">시즌별 접수</td>
+        <td class="c">미공개</td>
+        <td class="c">대형 7~20명<br />소형 1~6명</td>
+        <td class="l">무자격 인솔 시 환불 없이 입장 거부. 지각 시 단축 또는 취소</td>
+      </tr>
+      <tr>
+        <td class="c">대만<br />국립고궁박물원</td>
+        <td class="l">자체 예약시스템</td>
+        <td class="c">3일<br />(승인형 1주)</td>
+        <td class="c">방문 3일 전<br />승인 확인</td>
+        <td class="c"><b>20명</b><br />온라인10+현장10</td>
+        <td class="l"><b>무단 불참 2회 시 3개월 예약 정지.</b> 15분 전 미체크인 시 예약 무효</td>
+      </tr>
+      <tr>
+        <td class="c">스미소니언<br />(미국)</td>
+        <td class="l">온라인 신청서</td>
+        <td class="c">3~4주</td>
+        <td class="c"><b>3영업일</b></td>
+        <td class="c">8명 이상</td>
+        <td class="l">미공개 (무료 운영)</td>
+      </tr>
+      <tr>
+        <td class="c">익스플로러토리엄<br />(미국·과학관)</td>
+        <td class="l">온라인 신청서</td>
+        <td class="c">24시간<br />(권장 2개월)</td>
+        <td class="c">담당자 개별 연락</td>
+        <td class="c">15명 이상</td>
+        <td class="l">2주 이내 취소 시 예치금(50%) 환불 불가</td>
+      </tr>
+      <tr>
+        <td class="c">필드뮤지엄<br />(미국)</td>
+        <td class="l">온라인 신청서</td>
+        <td class="c">1주<br />(이내는 전화)</td>
+        <td class="c"><b>2~3영업일</b></td>
+        <td class="c">단체</td>
+        <td class="l">미공개. 희망일 불가 시 대안 일정 협의 명시</td>
+      </tr>
+      <tr>
+        <td class="c">Museum of Us<br />(미국)</td>
+        <td class="l">외부 예약 서비스<br />(Explorable Places)</td>
+        <td class="c">권장 6주</td>
+        <td class="c"><b>1~2주</b></td>
+        <td class="c">최대 90명<br />70명 이상 분할</td>
+        <td class="l">규정 미준수 시 예약 조정·입장 제한·취소</td>
+      </tr>
+      <tr>
+        <td class="c">테이트<br />(영국)</td>
+        <td class="l">전화·이메일</td>
+        <td class="c">2주</td>
+        <td class="c">미공개</td>
+        <td class="c">15명 이상<br />형식별 20~25명</td>
+        <td class="l">미공개</td>
+      </tr>
+      <tr>
+        <td class="c">전쟁기념관<br />(국내)</td>
+        <td class="l">홈페이지<br />(우리말 해설 한정)</td>
+        <td class="c">30일~3일 전</td>
+        <td class="c">선착순<br />(승인 없음)</td>
+        <td class="c">15~25명</td>
+        <td class="l"><b>5분 지연 시 별도 통보 없이 자동 취소</b></td>
+      </tr>
+      <tr>
+        <td class="c">국립중앙박물관<br />(국내·외부해설)</td>
+        <td class="l">홈페이지 로그인</td>
+        <td class="c">30일~1일 전</td>
+        <td class="c">선착순<br />(승인 없음)</td>
+        <td class="c">회당 10명 이하</td>
+        <td class="l">회차 전후 30분 내 미발권 시 자동 취소</td>
+      </tr>
+      <tr class="own">
+        <td class="c"><b>우리 시스템<br />(구축 중)</b></td>
+        <td class="l"><b>영문 온라인 신청서</b></td>
+        <td class="c"><b>제한 없음</b></td>
+        <td class="c"><b>2영업일</b><br />(내부 기준)</td>
+        <td class="c"><b>회차별 정원</b><br />(별도 배분 없음)</td>
+        <td class="l"><b>참석·불참 기록만 하고 별도 조치 없음</b></td>
+      </tr>
+    </table>
+
+    <div class="sub">주요 확인 사항</div>
+    <table class="rpt sm">
+      <tr>
+        <th style="width:16%">항목</th>
+        <th style="width:42%">타 기관 현황</th>
+        <th>우리 시스템 시사점</th>
+      </tr>
+      <tr>
+        <td class="hd">답변 기한</td>
+        <td class="l">공개 기관 4개관. 모두 2~3영업일 또는 1~2주로 구체적 수치 제시</td>
+        <td class="l">내부 기준 2영업일은 조사 대상 중 가장 짧으나, <b>대외 안내가 없어 방문객이 인지하지 못함</b></td>
+      </tr>
+      <tr>
+        <td class="hd">불참자 조치</td>
+        <td class="l">유료관은 금전(예치금·환불 불가), 무료관은 자격(예약 정지) 방식으로 구분</td>
+        <td class="l">무료 운영이므로 <b>자격 제한 방식이 해당</b>되나 현재 조치 없음</td>
+      </tr>
+      <tr>
+        <td class="hd">좌석 배분</td>
+        <td class="l">온라인 몫과 현장 몫을 분리 공개한 기관은 대만 국립고궁박물원 1개관</td>
+        <td class="l">서울시 공공서비스예약과 좌석을 공유하는 <b>우리 구조와 동일한 문제를 해결한 사례</b></td>
+      </tr>
+      <tr>
+        <td class="hd">국내 수준</td>
+        <td class="l">국내 2개관은 승인 절차 없이 선착순 운영. 다만 불참·지각 조치는 해외와 동등
+          (서대문형무소역사관 6개월 예약 제한)</td>
+        <td class="l"><b>승인형 도입은 국내 첫 사례에 해당</b>하나, 불참 조치는 국내 기준에도 미달</td>
+      </tr>
+    </table>
+  </div>
+  <div class="footer">
+    <span>외국인 도슨트 예약 운영방식 조사 결과 보고 (2026. 8. 13.)</span>
+    <span class="right"><span class="page-num"></span> / <span class="page-total"></span></span>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 3쪽 -->
+<!-- ============================================================ -->
+<div class="page">
+  <div class="page-inner">
+    <div class="sec"><span class="sq"></span>Ⅴ. 우리 시스템 현황 및 보완 필요사항</div>
+
+    <div class="sub">단계별 구축 현황</div>
+    <table class="rpt sm">
+      <tr>
+        <th style="width:10%">단계</th>
+        <th style="width:26%">우리 시스템 기능</th>
+        <th style="width:10%">구축</th>
+        <th>방문객 안내 여부</th>
+      </tr>
+      <tr>
+        <td class="c">① 접수</td><td class="l">영문 신청 페이지, 접수 확인 메일</td><td class="c">완료</td>
+        <td class="l">신청 기한 안내 없음</td>
+      </tr>
+      <tr>
+        <td class="c">② 심사</td><td class="l">담당자 알림 메일, 아침 처리 목록 발송</td><td class="c">완료</td>
+        <td class="l"><b>답변 기한 미안내</b></td>
+      </tr>
+      <tr>
+        <td class="c">③ 확정</td><td class="l">좌석 차단 후 일괄 확정, 확정 메일·일정 파일 발송</td><td class="c">완료</td>
+        <td class="l"><b>확정 성립 시점 미안내</b></td>
+      </tr>
+      <tr>
+        <td class="c">④ 현장</td><td class="l">당일 명단 출력</td><td class="c">완료</td>
+        <td class="l"><b>도착 시각·지각 처리 미안내</b></td>
+      </tr>
+      <tr>
+        <td class="c">⑤ 사후</td><td class="l">참석·불참 기록, 개인정보 90일 후 자동 삭제</td><td class="c">완료</td>
+        <td class="l">불참 시 조치 규정 없음</td>
+      </tr>
+    </table>
+    <p class="note">5개 단계 모두 구축 완료된 상태이며, 보완 필요사항은 전부 「방문객 안내」 영역에 해당함.</p>
+
+    <div class="sub">보완 필요사항 6건</div>
+    <table class="rpt sm">
+      <tr>
+        <th style="width:5%">연번</th>
+        <th style="width:20%">항목</th>
+        <th style="width:26%">현행</th>
+        <th style="width:34%">보완 내용</th>
+        <th>구분</th>
+      </tr>
+      <tr>
+        <td class="c">1</td>
+        <td class="l">확정 성립 시점 명시</td>
+        <td class="l">신청 시 예약이 된 것으로 오인 소지</td>
+        <td class="l">신청 화면과 접수 메일에 「확정 메일 수신 전까지는 예약이 아님」 명시
+          (메트로폴리탄·MoMA 동일 문구 사용)</td>
+        <td class="c">문구</td>
+      </tr>
+      <tr>
+        <td class="c">2</td>
+        <td class="l">답변 기한 공개</td>
+        <td class="l">내부 기준 2영업일, 대외 미안내</td>
+        <td class="l">신청 화면과 접수 메일에 「2영업일 내 회신」 표기</td>
+        <td class="c">문구</td>
+      </tr>
+      <tr>
+        <td class="c">3</td>
+        <td class="l">도착 시각·지각 처리</td>
+        <td class="l">규정 및 안내 없음</td>
+        <td class="l">확정 메일에 도착 시각(시작 15분 전), 집합 장소, 지각 시 좌석 해제 기준 기재</td>
+        <td class="c">문구</td>
+      </tr>
+      <tr>
+        <td class="c">4</td>
+        <td class="l">메일 미수신 대비 안내</td>
+        <td class="l">안내 없음</td>
+        <td class="l">「스팸함 확인」 문구 추가. 발신 도메인 미확정 상태로 초기 도달률 저하 우려 (루브르 동일 사례)</td>
+        <td class="c">문구</td>
+      </tr>
+      <tr>
+        <td class="c">5</td>
+        <td class="l">긴급 신청 경로 안내</td>
+        <td class="l">당일 신청은 내부 표시만 운영</td>
+        <td class="l">「방문 3일 이내는 신청 후 유선 연락」 안내 (필드뮤지엄 동일 사례)</td>
+        <td class="c">문구</td>
+      </tr>
+      <tr>
+        <td class="c">6</td>
+        <td class="l">희망 회차 2지망 접수</td>
+        <td class="l">1개 회차만 선택 가능, 좌석 없으면 대기자로 전환</td>
+        <td class="l">2지망 입력란 추가. 동일 방문일 타 회차로 즉시 확정 가능
+          (스미소니언·익스플로러토리엄·필드뮤지엄 동일 사례)</td>
+        <td class="c"><b>화면</b></td>
+      </tr>
+    </table>
+    <p class="note">6건 중 5건은 안내 문구 수정으로 처리 가능하며, 화면 수정이 필요한 항목은 6번 1건임.</p>
+
+  </div>
+  <div class="footer">
+    <span>외국인 도슨트 예약 운영방식 조사 결과 보고 (2026. 8. 13.)</span>
+    <span class="right"><span class="page-num"></span> / <span class="page-total"></span></span>
+  </div>
+</div>
+
+<script>
+(function () {
+  var pages = document.querySelectorAll('.page');
+  var total = pages.length;
+  pages.forEach(function (p, i) {
+    var numEl = p.querySelector('.footer .page-num');
+    var totalEl = p.querySelector('.footer .page-total');
+    if (numEl) numEl.textContent = String(i + 1);
+    if (totalEl) totalEl.textContent = String(total);
+  });
+  document.documentElement.setAttribute('data-manual-ready', 'true');
+})();
+</script>
+
+</body>
+</html>
