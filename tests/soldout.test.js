@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   makeDataDir, startApp, stopApp, restartApp, withDb, newJar,
-  get, postForm, postAdminForm, makeReservation, adminLogin, uniqueEmail, addDays, nextMonday, nextWeekday,
+  get, postForm, postAdminForm, makeReservation, adminLogin, uniqueEmail, addDays, nextClosedMonday, nextWeekday,
 } = require('./helper');
 
 let ctx;
@@ -111,7 +111,7 @@ test('SO5: manual mark via Schedule; invalid input rejected', async () => {
   });
   assert.match(past.headers.get('location') || '', /error=/);
   const monday = await postAdminForm(ctx.baseUrl, ctx.jar, '/admin/schedule/soldout', {
-    date: nextMonday(), slot_id: String(res1.slot_id),
+    date: nextClosedMonday(), slot_id: String(res1.slot_id),
   });
   assert.match(monday.headers.get('location') || '', /error=/);
   // Wednesday-only English session on a Thursday: open day, wrong weekday.

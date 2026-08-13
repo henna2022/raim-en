@@ -189,6 +189,18 @@ function nextWeekday(targetDow) {
   throw new Error('nextWeekday: not found within 7 days');
 }
 const nextMonday = () => nextWeekday(1);
+// 공휴일이 아닌(= 실제로 휴관하는) 다음 월요일. 월요일이 공휴일이면 과학관은
+// 문을 열고 대신 화요일에 쉬므로, "월요일은 닫혀 있다"를 확인하는 테스트는
+// 공휴일 월요일을 피해야 한다. holidays.js는 DB를 열지 않아 여기서 안전하게 쓴다.
+const publicHolidays = require('../src/holidays');
+function nextClosedMonday() {
+  const today = todayStrKST();
+  for (let i = 1; i <= 90; i++) {
+    const candidate = addDays(today, i);
+    if (weekdayOf(candidate) === 1 && !publicHolidays.isHoliday(candidate)) return candidate;
+  }
+  throw new Error('nextClosedMonday: not found within 90 days');
+}
 const nextWednesday = () => nextWeekday(3);
 
 // ---------- reservation helper ----------
@@ -245,6 +257,6 @@ module.exports = {
   makeDataDir, startApp, stopApp, restartApp, openDb, withDb,
   newJar, get, post, request,
   getCsrf, postForm, postAdminForm, postFormNoCsrf,
-  todayStrKST, addDays, weekdayOf, nextWeekday, nextMonday, nextWednesday,
+  todayStrKST, addDays, weekdayOf, nextWeekday, nextMonday, nextClosedMonday, nextWednesday,
   makeReservation, uniqueEmail, adminLogin,
 };

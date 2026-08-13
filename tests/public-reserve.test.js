@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   makeDataDir, startApp, stopApp, restartApp, withDb, newJar,
-  get, postForm, makeReservation, nextMonday, nextWednesday,
+  get, postForm, makeReservation, nextClosedMonday, nextWednesday,
   addDays, todayStrKST, uniqueEmail,
 } = require('./helper');
 
@@ -34,7 +34,7 @@ test('A1: GET / -> 200, body contains "Book a Guided Tour"', async () => {
 });
 
 test('A2: GET /api/sessions?date=<next Monday> -> closed:true, reason mentions Monday', async () => {
-  const date = nextMonday();
+  const date = nextClosedMonday();
   const res = await get(ctx.baseUrl, null, `/api/sessions?date=${date}`);
   assert.equal(res.status, 200);
   const data = await res.json();
@@ -97,7 +97,7 @@ test('A6: normal reservation (Wednesday, EN session, party 2) -> 302 /booking?..
 
 test('A7: reservation on a Monday -> 400, re-rendered form', async () => {
   const res = await postForm(ctx.baseUrl, ctx.jar, '/reserve', {
-    date: nextMonday(), slot_id: '1', name: 'A7 Tester', email: uniqueEmail(),
+    date: nextClosedMonday(), slot_id: '1', name: 'A7 Tester', email: uniqueEmail(),
     party_size: '2', agree: 'on',
   });
   assert.equal(res.status, 400);

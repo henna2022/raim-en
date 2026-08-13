@@ -2,8 +2,9 @@
 const express = require('express');
 const { db, hashPassword, verifyPassword, setSetting } = require('../db');
 const {
-  DATE_RE, SLA_HOURS, isValidDateStr, todayStr, weekdayOf, closureInfo, sessionsForDate, getReservation, STATUS_BADGE, getSettings,
+  DATE_RE, SLA_HOURS, isValidDateStr, todayStr, addDays, weekdayOf, closureInfo, sessionsForDate, getReservation, STATUS_BADGE, getSettings,
 } = require('../helpers');
+const holidays = require('../holidays');
 const mailer = require('../mailer');
 const sheets = require('../sheets');
 const { rateLimit } = require('../ratelimit');
@@ -398,8 +399,21 @@ router.get('/schedule', (req, res) => {
     SELECT so.*, s.start_time, s.end_time, s.tour_type, s.language, s.label
     FROM soldout so JOIN slots s ON s.id = so.slot_id
     WHERE so.date >= ? ORDER BY so.date, s.start_time`).all(todayStr());
+  // 앞으로 120일간 실제로 닫는 날을 계산해 보여준다. 공휴일 규칙(월요일 개관 →
+  // 화요일 대체 휴관 등)이 의도대로 도는지 직원이 눈으로 확인할 수 있어야 한다.
+  const upcomingClosures = [];
+  const start = todayStr();
+  for (let i = 0; i < 120; i++) {
+    const date = addDays(start, i);
+    const info = closureInfo(date);
+    const holiday = holidays.holidayInfo(date);
+    if (info.closed) upcomingClosures.push({ date, reason: info.reason, holiday: holiday ? holiday.name : '' });
+    else if (holiday) upcomingClosures.push({ date, reason: '', holiday: holiday.name, open: true });
+  }
   res.render('admin/schedule', {
     staff: req.session.staff, slots, closures, soldout, today: todayStr(),
+    upcomingClosures, holidayYears: holidays.coveredYears(),
+    holidayTableCovers: holidays.isCovered(addDays(start, 120)),
     saved: req.query.saved === '1', error: req.query.error || null,
   });
 });

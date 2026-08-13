@@ -1,5 +1,6 @@
 'use strict';
 const { db, getSettings } = require('./db');
+const holidays = require('./holidays');
 const crypto = require('node:crypto');
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -33,6 +34,13 @@ function addDays(dateStr, n) {
   return d.toISOString().slice(0, 10);
 }
 
+// 휴관 판정. 우선순위대로:
+//   ① Admin > Schedule의 수동 등록(closures)이 항상 최우선
+//   ② 1월 1일 / 설날 당일 / 추석 당일은 공휴일이어도 휴관
+//   ③ 월요일은 원칙 휴관. 단 그 월요일이 공휴일이면 개관한다
+//   ④ 화요일은, 직전 월요일이 공휴일이라 개관했다면 대체 휴관
+// ③에서 월요일이 ②에 걸려 어차피 닫는 날이라면 대체 휴관을 만들지 않는다 —
+// 화요일 휴관은 "월요일에 열었으니 대신 쉬는" 보상이기 때문.
 // Returns { closed: bool, reason: string, openOverride: bool }
 function closureInfo(dateStr) {
   const override = db.prepare('SELECT kind, reason FROM closures WHERE date = ?').get(dateStr);
@@ -40,8 +48,38 @@ function closureInfo(dateStr) {
     if (override.kind === 'open') return { closed: false, reason: '', openOverride: true };
     return { closed: true, reason: override.reason || 'Closed (museum notice)', openOverride: false };
   }
-  if (weekdayOf(dateStr) === 1) return { closed: true, reason: 'Closed every Monday', openOverride: false };
+
+  const fixed = holidays.isClosedHoliday(dateStr);
+  if (fixed) return { closed: true, reason: `Closed (${fixed.name})`, openOverride: false };
+
+  const wd = weekdayOf(dateStr);
+  if (wd === 1) {
+    // 월요일이 공휴일이면 개관하고, 대신 다음 날 화요일에 쉰다.
+    if (holidays.isHoliday(dateStr)) {
+      return { closed: false, reason: '', openOverride: true };
+    }
+    return { closed: true, reason: 'Closed every Monday', openOverride: false };
+  }
+
+  if (wd === 2) {
+    const monday = addDays(dateStr, -1);
+    // 그 월요일이 ②로 이미 닫는 날이었다면 보상 휴관이 필요 없다.
+    if (holidays.isHoliday(monday) && !holidays.isClosedHoliday(monday)
+        && !db.prepare(`SELECT 1 FROM closures WHERE date = ? AND kind = 'closed'`).get(monday)) {
+      return { closed: true, reason: 'Closed (open on Monday for the public holiday)', openOverride: false };
+    }
+  }
+
   return { closed: false, reason: '', openOverride: false };
+}
+
+// 이 회차가 그 날짜에 운영되는가. 요일 목록에 들어 있거나, 공휴일 추가 운영
+// 회차(also_on_holiday)인데 그날이 공휴일이면 운영한다 — 기획전시 09:30이 주말과
+// 공휴일에만 열리는 경우가 여기 해당한다.
+// sessionsForDate와 sessionOrdinal이 반드시 같은 규칙을 써야 회차 번호가 어긋나지 않는다.
+function slotRunsOn(slot, dateStr, wd) {
+  if (slot.weekdays.split(',').includes(wd)) return true;
+  return !!slot.also_on_holiday && holidays.isHoliday(dateStr);
 }
 
 // Bookable sessions for a given date (already filters past times for today).
@@ -60,7 +98,7 @@ function sessionsForDate(dateStr) {
   );
   const rows = db.prepare('SELECT * FROM slots WHERE active = 1 ORDER BY start_time, tour_type').all();
   const sessions = rows
-    .filter(s => s.weekdays.split(',').includes(wd))
+    .filter(s => slotRunsOn(s, dateStr, wd))
     .map(s => ({
       id: s.id,
       tour_type: s.tour_type,
@@ -84,8 +122,8 @@ function sessionOrdinal(dateStr, tourType, slotId) {
   // 공휴일 대체로 개관한 월요일은 화요일 시간표를 따른다(sessionsForDate와 동일 규칙).
   if (openOverride && wd === '1') wd = '2';
   const sameDay = db.prepare(
-    'SELECT id, weekdays FROM slots WHERE active = 1 AND tour_type = ? ORDER BY start_time'
-  ).all(tourType).filter(s => s.weekdays.split(',').includes(wd));
+    'SELECT id, weekdays, also_on_holiday FROM slots WHERE active = 1 AND tour_type = ? ORDER BY start_time'
+  ).all(tourType).filter(s => slotRunsOn(s, dateStr, wd));
   const idx = sameDay.findIndex(s => s.id === slotId);
   return idx === -1 ? null : idx + 1;
 }
@@ -166,6 +204,6 @@ const STATUS_BADGE = {
 
 module.exports = {
   DATE_RE, SLA_HOURS, isValidDateStr, todayStr, nowHM, weekdayOf, addDays,
-  closureInfo, sessionsForDate, sessionOrdinal, genCode, getEnglishTours,
+  closureInfo, sessionsForDate, sessionOrdinal, slotRunsOn, genCode, getEnglishTours,
   getReservation, getReservationByCode, STATUS_BADGE, getSettings,
 };

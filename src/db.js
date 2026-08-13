@@ -130,6 +130,9 @@ ensureColumn('reservations', 'reminder_sent', 'reminder_sent INTEGER NOT NULL DE
 // Google 시트 미러 반영 여부. 0이면 유지보수 루프가 재전송한다(src/sheets.js).
 // 기본값 0이므로 시트를 나중에 연결해도 기존 예약이 자동으로 채워진다.
 ensureColumn('reservations', 'sheet_synced', 'sheet_synced INTEGER NOT NULL DEFAULT 0');
+// 공휴일에도 추가로 여는 회차(기획전시 09:30). 요일 목록만으로는 표현할 수 없어
+// 별도 플래그로 둔다 — src/helpers.js slotRunsOn 참고.
+ensureColumn('slots', 'also_on_holiday', 'also_on_holiday INTEGER NOT NULL DEFAULT 0');
 
 // 상태나 개인정보가 바뀌면 자동으로 미러 대기열에 다시 넣는다. 새 코드 경로에서
 // sheets.nudge()를 부르는 걸 잊어도 시트가 조용히 낡지 않도록 하는 안전망.
@@ -195,7 +198,7 @@ function seed() {
       ['permanent', '16:40', '17:20', 'ko', TUE_SUN, 'Permanent Exhibition Tour #6'],
       // 기획전시 — 09:30은 주말만 운영. 그래서 회차 번호가 평일/주말에 달라진다
       // (평일 16:30 = 6회차, 주말 16:30 = 7회차). 번호는 날짜별로 계산한다.
-      ['special', '09:30', '10:10', 'ko', WEEKEND, 'Special Exhibition Tour 09:30 (weekends only)'],
+      ['special', '09:30', '10:10', 'ko', WEEKEND, 'Special Exhibition Tour 09:30 (weekends & public holidays)', 1],
       ['special', '10:30', '11:10', 'ko', TUE_SUN, 'Special Exhibition Tour 10:30'],
       ['special', '11:30', '12:10', 'ko', TUE_SUN, 'Special Exhibition Tour 11:30'],
       ['special', '13:30', '14:10', 'ko', TUE_SUN, 'Special Exhibition Tour 13:30'],
@@ -204,8 +207,8 @@ function seed() {
       ['special', '16:30', '17:10', 'ko', TUE_SUN_NO_WED, 'Special Exhibition Tour 16:30'],
       ['special', '16:30', '17:10', 'en', WED, 'Special Exhibition Tour 16:30 — ENGLISH docent'],
     ];
-    const ins = db.prepare('INSERT INTO slots (tour_type, start_time, end_time, language, weekdays, label) VALUES (?,?,?,?,?,?)');
-    for (const r of rows) ins.run(...r);
+    const ins = db.prepare('INSERT INTO slots (tour_type, start_time, end_time, language, weekdays, label, also_on_holiday) VALUES (?,?,?,?,?,?,?)');
+    for (const r of rows) ins.run(r[0], r[1], r[2], r[3], r[4], r[5], r[6] || 0);
   }
 
   const noticeCount = db.prepare('SELECT COUNT(*) AS c FROM notices').get().c;
@@ -284,10 +287,14 @@ function correctScheduleTo40Minutes() {
   ).get();
   if (!hasWeekendEarly) {
     db.prepare(`INSERT INTO slots (tour_type, start_time, end_time, language, weekdays, label)
-                VALUES ('special','09:30','10:10','ko','6,0','Special Exhibition Tour 09:30 (weekends only)')`).run();
+                VALUES ('special','09:30','10:10','ko','6,0','Special Exhibition Tour 09:30 (weekends & public holidays)')`).run();
     changed += 1;
   }
 
+  // 09:30 회차는 공휴일에도 운영한다
+  changed += db.prepare(
+    `UPDATE slots SET also_on_holiday = 1 WHERE tour_type = 'special' AND start_time = '09:30' AND also_on_holiday = 0`
+  ).run().changes;
   db.prepare(`INSERT OR IGNORE INTO settings (key, value) VALUES ('schedule_40min_fix','1')`).run();
   if (changed > 0) console.log(`[schedule] 시간표 정정 ${changed}건 적용 (전 회차 40분, 기획 주말 09:30 추가)`);
 }

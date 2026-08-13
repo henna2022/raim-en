@@ -106,6 +106,33 @@
 </div>
 
 <div class="panel">
+  <h2 style="margin-top:0;">Opening calendar — next 120 days</h2>
+  <p class="muted">Computed from the rules, so you can check them at a glance:
+  Mondays are closed, <strong>but a Monday that is a public holiday opens and the Tuesday closes instead</strong>.
+  <strong>1 January, Seollal day and Chuseok day are always closed</strong> — the other two days of each holiday
+  period stay open. The Special Exhibition's 09:30 session runs on weekends <em>and</em> public holidays.
+  Anything you add under Closures below overrides all of this.</p>
+  <% if (!holidayTableCovers) { %>
+    <div class="flash warn">공휴일 표는 <%= holidayYears.join(', ') %>년까지만 들어 있습니다.
+    그 이후 날짜는 공휴일로 인식되지 않으니(월요일 휴관 규칙만 적용) 아래 Closures에 직접 등록하거나
+    <code>src/holidays.js</code>에 연도를 추가하세요.</div>
+  <% } %>
+  <table>
+    <tr><th>Date</th><th>Public holiday</th><th>Status</th></tr>
+    <% for (const c of upcomingClosures) { %>
+      <tr>
+        <td><%= c.date %> <span class="muted"><%= ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(c.date + 'T12:00:00Z').getUTCDay()] %></span></td>
+        <td><%= c.holiday %></td>
+        <td>
+          <% if (c.open) { %><span class="badge badge-confirmed">OPEN</span>
+          <% } else { %><span class="badge badge-declined">CLOSED</span> <span class="muted"><%= c.reason %></span><% } %>
+        </td>
+      </tr>
+    <% } %>
+  </table>
+</div>
+
+<div class="panel">
   <h2 style="margin-top:0;">Fully booked (sold-out) sessions</h2>
   <p class="muted">A session marked here stops appearing on the booking form for that date, so visitors
   can't file requests you would only have to decline. Marks are usually set from the decline form on the
