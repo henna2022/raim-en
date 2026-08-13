@@ -1,8 +1,13 @@
 services:
   raim-en:
     build: .
+    # Loopback only: nginx terminates TLS and proxies to 127.0.0.1:4310
+    # (docs/DEPLOY.md ⑤). Publishing on 0.0.0.0 would expose the app directly,
+    # and with TRUST_PROXY=1 a direct client can spoof X-Forwarded-Proto to get
+    # a full admin session over cleartext. Docker's own DNAT rules sit ahead of
+    # ufw, so a host firewall would not close it either.
     ports:
-      - "4310:4310"
+      - "127.0.0.1:4310:4310"
     env_file: .env
     volumes:
       - ./data:/app/data

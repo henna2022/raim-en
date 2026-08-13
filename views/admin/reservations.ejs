@@ -32,7 +32,9 @@
   <% if (rows.length === 0) { %><p class="muted">No reservations match this filter.</p><% } else { %>
   <table>
     <tr><th>Code</th><th>Visit</th><th>Session</th><th>Visitor</th><th>Party</th><th>Status</th><th>Decided</th><th>Actions</th></tr>
-    <% for (const r of rows) { const [label, cls] = STATUS_BADGE[r.status]; %>
+    <%# Unknown status (e.g. after a rollback past the commit that added it) must
+        render, not 500 the whole list. %>
+    <% for (const r of rows) { const [label, cls] = STATUS_BADGE[r.status] || [r.status, 'badge-pending']; %>
       <tr>
         <td><strong><%= r.code %></strong></td>
         <td><%= r.visit_date %><br><span class="muted"><%= r.start_time %>–<%= r.end_time %></span></td>

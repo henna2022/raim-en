@@ -2,6 +2,7 @@
 
 <h1>Settings</h1>
 <% if (saved) { %><div class="flash ok">Saved.</div><% } %>
+<% if (error) { %><div class="flash err"><%= error %></div><% } %>
 
 <div class="panel">
   <form method="POST" action="/admin/settings" style="max-width:640px;">

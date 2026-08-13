@@ -62,10 +62,18 @@ async function expireWaitlist() {
   const REASON = 'No seats freed up before your visit date.';
   let expired = 0;
   for (const r of rows) {
-    if (update.run(REASON, r.id).changes !== 1) continue;
-    expired += 1;
-    await mailer.sendMail(r.email, `[Seoul RAIM] About your request — ${r.code}`,
+    // Email FIRST, commit the status only once delivery is accounted for. The
+    // reverse order silently declines a visitor who is never told: the guarded
+    // UPDATE no longer matches on a later pass, so nothing ever retries.
+    // (Without SMTP the outbox row IS the delivery — same convention as the
+    // digest below.)
+    const sendResult = await mailer.sendMail(r.email, `[Seoul RAIM] About your request — ${r.code}`,
       mailer.declinedEmail({ ...r, decline_reason: REASON }));
+    if (mailer.smtpConfigured && !sendResult.sent) {
+      console.error(`[waitlist] decline email failed for ${r.code} (${sendResult.error}) — leaving it waitlisted for the next pass`);
+      continue;
+    }
+    if (update.run(REASON, r.id).changes === 1) expired += 1;
   }
   if (expired > 0) console.log(`[waitlist] auto-declined ${expired} past-date waitlisted request(s)`);
   return expired;

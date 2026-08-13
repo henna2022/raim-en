@@ -13,13 +13,20 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
-# App code.
+# App code. scripts/ is included so the documented backup procedure
+# (docs/DEPLOY.md ⑦) can run inside the container.
 COPY src/ ./src/
 COPY views/ ./views/
 COPY public/ ./public/
+COPY scripts/ ./scripts/
 
 ENV NODE_ENV=production
 ENV PORT=4310
+# Inside the container the listener must accept the port mapping, so it binds
+# all interfaces here. Exposure is constrained on the HOST side instead:
+# docker-compose publishes to 127.0.0.1 only. Outside Docker the app defaults
+# to binding loopback (src/app.js).
+ENV HOST=0.0.0.0
 
 EXPOSE 4310
 

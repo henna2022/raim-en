@@ -134,10 +134,18 @@ function verifyPassword(password, salt, expectedHash) {
 function seed() {
   const staffCount = db.prepare('SELECT COUNT(*) AS c FROM staff').get().c;
   if (staffCount === 0) {
-    const { salt, hash } = hashPassword('raim2026!');
+    // The dev default below is public (checked into git), so a production host
+    // must never be seeded with it — anyone could log in between first boot and
+    // the operator's password change. In production use ADMIN_INITIAL_PASSWORD
+    // if supplied, otherwise mint a random one and print it once.
+    const isProd = process.env.NODE_ENV === 'production';
+    const initialPassword = process.env.ADMIN_INITIAL_PASSWORD
+      || (isProd ? crypto.randomBytes(12).toString('base64url') : 'raim2026!');
+    const { salt, hash } = hashPassword(initialPassword);
     db.prepare('INSERT INTO staff (username, name, role, pw_salt, pw_hash) VALUES (?,?,?,?,?)')
       .run('admin', 'Administrator', 'admin', salt, hash);
-    console.log('[seed] Created initial admin account — username: admin / password: raim2026! (change it in Admin > Staff)');
+    console.log(`[seed] Created initial admin account — username: admin / password: ${initialPassword} (change it in Admin > Staff)`);
+    if (isProd) console.log('[seed] ^ This password is shown only once. Save it now, then change it after logging in.');
   }
 
   const slotCount = db.prepare('SELECT COUNT(*) AS c FROM slots').get().c;
@@ -198,6 +206,12 @@ function seed() {
     retention_days: '90',
     noshow_retention_days: '365',
     digest_hour: '9',
+    // Marks today as already-digested so neither a fresh install nor an upgrade
+    // of an existing database fires an unannounced digest — containing the whole
+    // pending backlog and visitor PII — the moment the process boots. The first
+    // real digest goes out next morning at digest_hour. INSERT OR IGNORE means
+    // this never overwrites a live value.
+    digest_last_sent: new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date()),
     // yeyak helper links shown on the dashboard. The service pages are opened
     // monthly on yeyak (one per exhibition per month), so staff paste the fresh
     // URLs here each month; empty = the dashboard just hides the link.

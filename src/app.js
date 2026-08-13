@@ -1,13 +1,12 @@
 'use strict';
 const path = require('node:path');
-const express = require('express');
-const session = require('express-session');
-const { csrfMiddleware } = require('./csrf');
-const SqliteStore = require('./session-store');
 
-require('./db'); // initialize schema + seed
-require('./maintenance').start(); // personal-data retention purge
-
+// Config validation runs FIRST, before anything with a side effect (opening and
+// seeding the DB, the retention purge, scheduled mail). A refused boot must not
+// mutate data or send email: `restart: unless-stopped` / `Restart=on-failure`
+// would otherwise replay those side effects every few seconds until someone
+// notices the container is down.
+//
 // Refuse to boot in production without a real session secret — the fallback
 // below is public (checked into git) and would let anyone forge session cookies.
 if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
@@ -17,6 +16,16 @@ if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
 if (process.env.NODE_ENV !== 'production' && !process.env.SESSION_SECRET) {
   console.warn('[session] SESSION_SECRET not set — using the insecure default secret. Set SESSION_SECRET before deploying to production.');
 }
+
+const express = require('express');
+const session = require('express-session');
+const { csrfMiddleware } = require('./csrf');
+const SqliteStore = require('./session-store');
+
+require('./db'); // initialize schema + seed
+// NOTE: maintenance.start() is deliberately NOT called at require time — it is
+// started from the listen callback below, so scheduled and destructive work
+// only ever runs in a process that actually committed to serving traffic.
 
 const app = express();
 const PORT = Number(process.env.PORT || 4310);
@@ -104,8 +113,17 @@ app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
 
 module.exports = app;
 if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`Seoul RAIM (EN) running at http://localhost:${PORT}`);
-    console.log(`Admin: http://localhost:${PORT}/admin (initial account: admin / raim2026!)`);
+  // Bind to loopback by default: behind nginx (docs/DEPLOY.md ⑤) the app port
+  // must never be reachable from outside the host — with TRUST_PROXY=1 a direct
+  // client is itself the trusted hop, so it could spoof X-Forwarded-Proto and
+  // obtain a `secure` session cookie over cleartext. Containers set HOST=0.0.0.0
+  // (the Dockerfile does) because the port mapping terminates on the host side,
+  // where docker-compose publishes to 127.0.0.1 only.
+  const HOST = process.env.HOST || '127.0.0.1';
+  app.listen(PORT, HOST, () => {
+    // Scheduled + destructive maintenance starts only once we are serving.
+    require('./maintenance').start();
+    console.log(`Seoul RAIM (EN) running at http://${HOST}:${PORT}`);
+    console.log(`Admin: http://${HOST}:${PORT}/admin`);
   });
 }

@@ -18,7 +18,7 @@
     <% if (rows.length === 0) { %><p>No confirmed reservations on this date.</p><% } else { %>
     <table>
       <tr><th>Time</th><th>Session</th><th>Code</th><th>Name</th><th>Party</th><th>Status</th><th>Checked in</th></tr>
-      <% for (const r of rows) { const [label] = STATUS_BADGE[r.status]; %>
+      <% for (const r of rows) { const [label] = STATUS_BADGE[r.status] || [r.status]; %>
         <tr>
           <td><strong><%= r.start_time %></strong></td>
           <td><%= r.tour_type === 'permanent' ? 'Permanent' : 'Special' %> (<%= r.language.toUpperCase() %>)</td>

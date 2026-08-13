@@ -16,10 +16,12 @@ Seoul Robot & AI Museum — 외국인 방문자 예약 시스템(`raim-en`) 배�
 | 변수 | 필수/선택 | 기본값 | 설명 |
 |---|---|---|---|
 | `PORT` | 선택 | `4310` | 앱이 리슨할 포트 |
+| `HOST` | 선택 | `127.0.0.1` | 리슨할 인터페이스. **기본값(루프백)을 유지하세요** — 앱 포트가 외부에 직접 노출되면 안 됩니다(⑤ 참고). Docker 이미지는 내부적으로 `0.0.0.0`을 사용하고, 노출은 호스트 쪽 포트 매핑에서 루프백으로 제한합니다 |
 | `SESSION_SECRET` | **필수(production)** | (없음) | 세션 쿠키 서명 키. `NODE_ENV=production`에서 미설정 시 부팅 거부 |
-| `NODE_ENV` | 선택 | (미설정) | `production`으로 설정 시 쿠키 secure 플래그 활성화 + SESSION_SECRET 강제 |
-| `TRUST_PROXY` | 선택(프록시 뒤라면 필수) | (미설정) | `1`로 설정하면 리버스 프록시의 `X-Forwarded-For`를 신뢰 |
-| `BASE_URL` | 선택 | `http://localhost:4310` | 직원 알림 메일 속 관리자 페이지 링크의 기준 URL |
+| `NODE_ENV` | 선택 | (미설정) | `production`으로 설정 시 쿠키 secure 플래그 활성화 + SESSION_SECRET 강제 + 초기 admin 비밀번호를 랜덤 생성 |
+| `TRUST_PROXY` | **필수(프록시 뒤)** | (미설정) | `1`로 설정하면 리버스 프록시의 `X-Forwarded-For`/`X-Forwarded-Proto`를 신뢰. 프록시 뒤에서 누락 시 **로그인 불가 + 모든 rate limit이 하나의 버킷으로 붕괴**(⑤ 참고) |
+| `BASE_URL` | **필수(실제 배포)** | `http://localhost:4310` | 공개 origin(`https://...`). 직원 알림 메일의 관리자 링크와 canonical/OG 태그에 사용됩니다. 비워두면 메일 링크가 `localhost`를 가리켜 직원이 클릭할 수 없습니다 |
+| `ADMIN_INITIAL_PASSWORD` | 선택 | (없음) | 최초 1회 admin 계정 시드에만 사용. production에서 미설정이면 랜덤 생성 후 부팅 로그에 1회 출력 |
 | `SMTP_HOST` | 선택 | (미설정) | 미설정 시 모든 메일이 Outbox(DB 저장, 미발송)로만 기록됨 |
 | `SMTP_PORT` | 선택 | `587` | SMTP 포트 |
 | `SMTP_SECURE` | 선택 | `false` | `true`면 SMTPS(TLS) 연결 |
@@ -32,6 +34,9 @@ Seoul Robot & AI Museum — 외국인 방문자 예약 시스템(`raim-en`) 배�
 
 ## ③ Docker 배포 절차
 
+> **순서 주의**: 관리자 첫 로그인은 반드시 **TLS(⑤) 설정을 끝낸 뒤 HTTPS로** 하세요.
+> 앱 포트(4310)는 루프백에만 바인딩되어 외부에서 직접 접근할 수 없으며, 이는 의도된 설정입니다.
+
 ```bash
 # 1. 환경변수 파일 준비
 cp .env.example .env
@@ -39,18 +44,39 @@ cp .env.example .env
 # 2. SESSION_SECRET 생성 후 .env에 채워넣기
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
-# 3. 빌드 및 기동
+# 3. .env에서 BASE_URL을 공개 주소로 설정 (예: BASE_URL=https://raim.seoulraim.com)
+#    TRUST_PROXY=1 은 .env.example에 이미 들어 있습니다 — 프록시 뒤라면 그대로 두세요.
+
+# 4. 빌드 및 기동
 docker compose up -d --build
 
-# 4. 로그 확인 (정상 기동 시 리슨 로그 출력)
+# 5. 로그 확인 — 초기 admin 비밀번호가 여기 1회만 출력됩니다. 지금 저장하세요.
 docker compose logs -f raim-en
 ```
 
-첫 기동 시 초기 관리자 계정이 자동 생성됩니다 (`admin` / `raim2026!`, 콘솔 로그로도 안내됨).
+첫 기동 시 초기 관리자 계정(`admin`)이 자동 생성됩니다. **production에서는 비밀번호가 랜덤 생성되어 부팅 로그에만 1회 출력**됩니다(`ADMIN_INITIAL_PASSWORD`로 직접 지정 가능). 예전 버전에 있던 고정 비밀번호는 git에 공개되어 있으므로 production 시드에는 더 이상 사용되지 않습니다.
 
-1. `http://<서버주소>:4310/admin`으로 접속해 초기 계정으로 로그인합니다.
+⑤의 nginx/TLS 설정을 끝낸 뒤:
+
+1. `https://<도메인>/admin`으로 접속해 로그에 출력된 초기 비밀번호로 로그인합니다.
 2. **Admin > Staff**에서 즉시 admin 비밀번호를 변경합니다.
-3. 실제 근무 직원 5명의 계정을 **Admin > Staff**에서 생성합니다 (초기 admin 계정은 공용 계정으로 남겨두지 않는 것을 권장).
+3. 실제 근무 직원 계정을 **Admin > Staff**에서 생성합니다 (초기 admin 계정은 공용 계정으로 남겨두지 않는 것을 권장).
+4. **④ 첫 배포 후 Admin 설정**을 이어서 진행합니다.
+
+## ③-2 첫 배포 후 Admin 설정 (필수)
+
+앱은 기동되지만, 아래 설정을 넣기 전까지는 운영 기능이 제대로 동작하지 않습니다. **Admin > Settings**에서:
+
+| 설정 | 기본값 | 넣지 않으면 |
+|---|---|---|
+| `Staff notification email` | `raim@seoulraim.com` | 신규 신청·yeyak 해제 알림과 아침 다이제스트가 아무에게도 가지 않음 |
+| `Morning digest hour` (KST 0–23) | `9` | 비우면 아침 다이제스트 비활성화 |
+| `yeyak service URL — Permanent / Special` | (비어 있음) | 대시보드의 yeyak 바로가기 버튼이 표시되지 않음. **yeyak은 매월 새 서비스 페이지가 열리므로 매달 갱신이 필요합니다** |
+| `yeyak admin console URL` | (비어 있음) | 관리자시스템 바로가기 버튼 미표시 |
+| `Contact email / phone / address` | 시드값 | 공개 사이트와 방문객 메일에 잘못된 정보가 노출됨 |
+| `Personal data retention (days)` | `90` | 개인정보 보존기한 정책과 실제 삭제 주기가 어긋남 |
+
+숫자 설정(보존기한, 다이제스트 시각 등)은 서버에서 범위 검증 후 저장되며, 범위를 벗어난 값은 무시되고 경고가 표시됩니다.
 
 ## ④ Docker 없이 systemd로 운영하는 대안
 
@@ -86,7 +112,22 @@ sudo systemctl status raim-en
 
 ## ⑤ 리버스 프록시 (nginx)
 
-TLS는 nginx에서 종단하고, 앱에는 평문 HTTP로 프록시합니다. 이때 앱이 `X-Forwarded-For`/HTTPS 여부를 올바르게 인식하도록 **`TRUST_PROXY=1`이 반드시 필요**합니다 (없으면 세션 쿠키의 `secure` 판정이 어긋나 로그인 쿠키가 브라우저에 저장되지 않을 수 있음).
+TLS는 nginx에서 종단하고, 앱에는 루프백(`127.0.0.1:4310`)으로 평문 프록시합니다.
+
+**⚠️ 앱 포트를 외부에 노출하지 마세요.** `docker-compose.yml`은 `127.0.0.1:4310:4310`으로 루프백에만 게시하고, Docker 없이 실행할 때도 앱은 기본적으로 루프백에만 바인딩합니다(`HOST`). 4310이 공인 IP에서 접근 가능하면 **TLS를 우회해 평문으로 관리자 세션을 탈취**당할 수 있습니다 — `TRUST_PROXY=1` 상태에서는 직접 접속한 클라이언트가 스스로 신뢰 홉이 되어 `X-Forwarded-Proto: https`를 위조할 수 있고, 그러면 `secure` 세션 쿠키가 평문 연결로 발급됩니다. Docker의 DNAT 규칙은 ufw보다 앞서므로 호스트 방화벽만으로는 막히지 않습니다.
+
+배포 후 반드시 외부에서 확인하세요:
+
+```bash
+curl -sv --max-time 5 http://<공인IP>:4310/   # 반드시 연결 실패해야 정상
+```
+
+**`TRUST_PROXY=1`은 프록시 뒤에서 필수입니다.** 누락 시 두 가지가 동시에 깨집니다.
+
+1. 앱이 연결을 HTTPS로 인식하지 못해 **세션 쿠키가 아예 발급되지 않고, 아무도 로그인할 수 없습니다.**
+2. 모든 rate limit이 `req.ip`를 프록시 IP 하나로 보게 되어 **전체 방문자가 하나의 버킷을 공유합니다** — 공개 예약 폼이 10분당 5건에서 막혀 사실상 다운됩니다.
+
+nginx가 `X-Forwarded-Proto`를 전달하는지도 반드시 확인하세요(아래 설정에 포함되어 있음). 이 헤더가 없으면 1번 증상이 그대로 발생합니다.
 
 ```nginx
 server {
@@ -128,7 +169,15 @@ server {
 0 3 * * * cd /opt/raim-en && ./scripts/backup.sh >> /var/log/raim-en-backup.log 2>&1
 ```
 
-`scripts/backup.sh`는 `node:sqlite`의 `VACUUM INTO`로 온라인 백업을 `backups/raim-YYYYMMDD-HHMMSS.db`에 남기고, 최신 14개만 보관합니다 (docker-compose 환경에서는 컨테이너 밖에서 `DATA_DIR=./data ./scripts/backup.sh` 형태로 실행).
+`scripts/backup.sh`는 `node:sqlite`의 `VACUUM INTO`로 온라인 백업을 `backups/raim-YYYYMMDD-HHMMSS.db`에 남기고, 최신 14개만 보관합니다.
+
+**Docker 환경**에서는 스크립트가 이미지 안에 포함되어 있으므로 컨테이너에서 실행합니다(호스트에 Node를 설치할 필요 없음).
+
+```bash
+docker compose exec -w /app raim-en scripts/backup.sh
+```
+
+이때 백업 파일은 컨테이너 내부 `/app/backups`에 생성되므로, 호스트에 남기려면 `docker-compose.yml`의 `volumes`에 `./backups:/app/backups`를 추가하세요. 호스트에 Node가 설치돼 있다면 컨테이너 밖에서 `DATA_DIR=./data ./scripts/backup.sh`로 실행해도 됩니다(바인드 마운트된 같은 파일을 읽습니다).
 
 **복원 절차**
 
@@ -142,16 +191,19 @@ server {
 
 ## ⑧ 업데이트 / 롤백
 
-**업데이트**
+**업데이트 — 반드시 백업 후 진행**
 
 ```bash
+./scripts/backup.sh          # 또는 docker compose exec -w /app raim-en scripts/backup.sh
 git pull
 docker compose up -d --build
 # 또는 systemd 운영 시:
 git pull && npm ci --omit=dev && sudo systemctl restart raim-en
 ```
 
-**롤백**
+스키마 마이그레이션은 **재기동 시 자동, 전진 방향으로만** 적용됩니다. 새 테이블·컬럼·설정 기본값은 기존 DB에 그대로 추가되며 기존 데이터는 보존됩니다(신규 설치와 업그레이드 모두 검증됨).
+
+**롤백 — 데이터 호환성 주의**
 
 ```bash
 git checkout <이전 커밋 또는 태그>
@@ -160,12 +212,31 @@ docker compose up -d --build
 git checkout <이전 커밋 또는 태그> && npm ci --omit=dev && sudo systemctl restart raim-en
 ```
 
+⚠️ **코드만 되돌려도 DB는 되돌아가지 않습니다.** 새 버전이 기록한 데이터를 구 버전이 이해하지 못하면 화면이 깨질 수 있습니다. 대기자(waitlist) 기능(`2d7450e`) 이전으로 롤백한다면, 그 전에 새 상태값을 정리하세요:
+
+```bash
+# 대기자 행을 구 버전이 아는 상태로 되돌린다 (백업 후 실행)
+node -e "const{DatabaseSync}=require('node:sqlite');const db=new DatabaseSync('data/raim.db');\
+console.log(db.prepare(\"UPDATE reservations SET status='pending' WHERE status='waitlisted'\").run());"
+```
+
+가장 안전한 롤백은 **직전 백업 파일로 DB까지 함께 복원**하는 것입니다(⑦ 복원 절차). 현재 코드의 화면들은 알 수 없는 상태값을 만나도 500 대신 그대로 표시하도록 방어되어 있지만, 구 버전에는 그 방어가 없습니다.
+
 ## ⑨ 헬스체크
 
 - `GET /` → `200` (공개 랜딩 페이지)
 - `GET /admin/login` → `200` (관리자 로그인 페이지)
 
+서버 **안에서** (앱은 루프백에만 바인딩되어 있습니다):
+
 ```bash
-curl -sf -o /dev/null -w '%{http_code}\n' http://localhost:4310/
-curl -sf -o /dev/null -w '%{http_code}\n' http://localhost:4310/admin/login
+curl -sf -o /dev/null -w '%{http_code}\n' http://127.0.0.1:4310/
+curl -sf -o /dev/null -w '%{http_code}\n' http://127.0.0.1:4310/admin/login
+```
+
+서버 **밖에서** — 공개 주소는 200, 앱 포트 직결은 반드시 실패해야 합니다:
+
+```bash
+curl -sf -o /dev/null -w '%{http_code}\n' https://<도메인>/
+curl -sv --max-time 5 http://<공인IP>:4310/    # 연결 실패가 정상 (성공하면 ⑤ 재확인)
 ```

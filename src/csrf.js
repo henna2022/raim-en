@@ -29,7 +29,15 @@ function csrfMiddleware(req, res, next) {
   let token = readCookie(req, COOKIE_NAME);
   if (!token) {
     token = crypto.randomBytes(24).toString('hex');
-    res.cookie(COOKIE_NAME, token, { httpOnly: true, sameSite: 'lax', maxAge: MAX_AGE_MS });
+    // `secure` in production mirrors the session cookie (src/app.js): without it
+    // the CSRF token would also travel over a plaintext downgrade. Behind a TLS-
+    // terminating proxy this needs TRUST_PROXY=1, same as the session cookie.
+    res.cookie(COOKIE_NAME, token, {
+      httpOnly: true,
+      sameSite: 'lax',
+      maxAge: MAX_AGE_MS,
+      secure: process.env.NODE_ENV === 'production',
+    });
   }
   res.locals.csrf = token;
 

@@ -124,11 +124,15 @@ test('SO5: manual mark via Schedule; invalid input rejected', async () => {
   assert.equal(noop(ctx.dataDir), beforeCount, 'rejected marks must not be saved');
 });
 
-test('SO6: past-dated sold-out marks are purged at boot', async () => {
+test('SO6: past-dated sold-out marks are purged by the retention job', async () => {
   withDb(ctx.dataDir, (db) =>
     db.prepare('INSERT OR IGNORE INTO soldout (date, slot_id, created_by) VALUES (?,?,?)')
       .run('2020-01-01', res1.slot_id, 'admin'));
-  await restartApp(ctx);
+  // Same module instance (and DB handle) as the running app — see features.test.js.
+  // purgeOldData is what maintenance.start() schedules; the app runs it from the
+  // listen callback, so call it directly rather than restarting the harness app
+  // (which calls app.listen itself and therefore never starts maintenance).
+  require('../src/maintenance').purgeOldData();
   const stale = withDb(ctx.dataDir, (db) =>
     db.prepare(`SELECT COUNT(*) AS c FROM soldout WHERE date < '2026-01-01'`).get().c);
   assert.equal(stale, 0, 'past-dated marks must be purged');

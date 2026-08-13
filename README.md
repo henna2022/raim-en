@@ -18,15 +18,23 @@ npm start          # http://localhost:4310
 
 1. 외국인이 `/reserve`에서 날짜·회차 선택 후 신청 → 상태 `pending`, 방문자에게 "request received" 메일
    + **담당자 메일로 한국어 알림 발송** (Settings의 Staff notification email, 당일 신청은 제목에 [오늘])
-2. 직원이 admin 대시보드에서 신청 확인 — 48시간 넘게 대기한 신청은 빨간 강조 + OVER 48H 배지
-3. **서울시 공공서비스예약(yeyak) 관리자 예약으로 해당 회차 좌석을 먼저 차단**
-4. admin에서 체크박스(yeyak 차단 완료) 체크 후 Confirm → 확정 메일 자동 발송
-5. 당일 데스크: Dashboard의 "Print today's desk list"로 명단 출력, 방문 후 Attended/No-show 처리
+2. **아침 다이제스트**(매일 `digest_hour` 시각, 기본 09시 KST) 메일 1통으로 그날 처리할 일을 받습니다 —
+   대기 신청 목록(SLA 48시간 초과 강조), yeyak 해제 대기, 대기자(waitlist), 오늘 확정 방문 건수
+3. 직원이 admin 대시보드에서 확인 — 신청은 **(방문일, 회차)별로 그룹**으로 묶여 표시됩니다
+4. **서울시 공공서비스예약(yeyak) 관리자 예약으로 그룹의 합계 좌석을 한 번에 차단**
+   (그룹의 "Copy for yeyak" 버튼으로 입력용 텍스트 복사, Settings에 저장한 월별 yeyak 링크로 바로 이동)
+5. 체크박스(yeyak 차단 완료) 체크 후 **일괄 Confirm** → 각 방문자에게 확정 메일 + 캘린더(.ics) 발송
+6. 당일 데스크: Dashboard의 "Print today's desk list"로 명단 출력, 방문 후 Attended/No-show 처리
 
-좌석이 없으면 Decline(사유 입력) → 거절 메일 발송. 방문객은 `/booking`에서 코드+이메일로 조회·취소 가능.
+**좌석이 없을 때**는 거절 대신 **Waitlist**에 올립니다 — 방문자에게 대기 안내 메일이 가고, 좌석이 나면 승격(Confirm)할
+수 있습니다. 그 회차가 완전히 찼다면 **매진(sold-out) 표시**를 함께 걸어 예약 폼에서 아예 선택되지 않게 합니다
+(해제는 admin > Schedule). 방문일이 지나도록 좌석이 나지 않은 대기 건은 자동으로 거절 처리되고 안내 메일이 나갑니다.
 
 **확정 예약이 취소되면** (방문자 취소든 직원 취소든) 해당 건이 Dashboard의 **Yeyak release queue**에 올라가고
-담당자 메일로 "좌석 해제 필요" 알림이 갑니다. yeyak에서 좌석을 해제한 뒤 "Seats released"를 눌러야 큐에서 사라집니다.
+담당자 메일로 알림이 갑니다. 차단해 둔 좌석은 **같은 회차 대기자에게 먼저 승격**하고, 남는 좌석만 yeyak에서 해제한 뒤
+"Resolved"를 눌러 큐에서 내립니다.
+
+방문객은 `/booking`에서 코드+이메일로 상태 조회·취소(대기자는 "Leave the waitlist")가 가능합니다.
 
 **개인정보 보존기한**: 방문일로부터 `retention_days`(기본 90일)가 지난 예약과 메일 로그는 서버가 자동 삭제합니다
 (부팅 시 + 12시간마다, `src/maintenance.js`).
@@ -47,14 +55,24 @@ SMTP_FROM="Seoul RAIM <raim@seoulraim.com>" npm start
   수요일 15:40(상설)·16:30(기획)은 영어 도슨트 회차로 분리 등록되어 있음 — admin > Schedule에서 수정 가능.
 - 휴관: 매주 월요일 자동 휴관. 명절 등 추가 휴관일과 "월요일 개관(공휴일 대체)"은 admin > Schedule > Closures에서 관리.
 
-## 실서비스 전 필수 조치 (현재는 로컬 프로토타입)
+## 실서비스 전 필수 조치
 
-- [ ] `SESSION_SECRET` 환경변수 설정 (현재 dev 기본값)
-- [ ] HTTPS 적용, 세션 스토어를 메모리 → 영속 스토어로 교체, CSRF 토큰 추가
-- [ ] 개인정보 처리방침 페이지(수집 항목·보관 기간) 법무/행정 검토 — 방문일 이후 자동 삭제 배치 권장
-- [ ] `admin` 초기 비밀번호 변경, 직원 계정 발급 (5명)
-- [ ] 요청 속도 제한(rate limit) 및 스팸 방지(허니팟/캡차 대안) 추가
-- [ ] DB 백업 정책 (data/raim.db)
+구현 완료 (코드에 반영됨):
+
+- [x] `SESSION_SECRET` 강제 — production에서 미설정 시 부팅 거부 (`src/app.js`)
+- [x] 세션 스토어 SQLite 영속화 (`src/session-store.js`), CSRF 더블 서브밋 (`src/csrf.js`)
+- [x] 요청 속도 제한 + 허니팟 스팸 방지 (`src/ratelimit.js`, `src/routes/public.js`)
+- [x] 개인정보 보존기한 자동 삭제 배치 (`src/maintenance.js`)
+- [x] DB 백업 스크립트 + 복원 절차 (`scripts/backup.sh`, `docs/DEPLOY.md` ⑦)
+- [x] 보안 헤더·HSTS, 운영 쿠키 `Secure` (`src/app.js`, `src/csrf.js`)
+
+배포 시 운영자가 해야 할 일 — 절차는 [`docs/DEPLOY.md`](docs/DEPLOY.md):
+
+- [ ] HTTPS(nginx) 적용 + `TRUST_PROXY=1`, 앱 포트 4310 외부 비노출 확인
+- [ ] `admin` 초기 비밀번호 변경(부팅 로그의 1회성 랜덤 값), 직원 계정 발급
+- [ ] Admin > Settings 초기 설정 (담당자 메일, 다이제스트 시각, 월별 yeyak 링크)
+- [ ] 백업 cron 등록
+- [ ] 개인정보 처리방침 페이지(수집 항목·보관 기간) 법무/행정 검토
 
 ## 구조
 

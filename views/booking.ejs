@@ -48,7 +48,10 @@
     <% if (error) { %><div class="error-box" style="margin-top:16px;"><%= error %></div><% } %>
   </div>
 
-  <% if (reservation) { const r = reservation; const [label] = STATUS_BADGE[r.status]; %>
+  <%# Fall back rather than throw on a status this build doesn't know — a rollback
+      to an older commit would otherwise 500 this page for every row written by a
+      newer one (e.g. 'waitlisted'). %>
+  <% if (reservation) { const r = reservation; const [label] = STATUS_BADGE[r.status] || [r.status]; %>
     <div class="panel" style="margin-top:16px;">
       <div class="status-banner st-<%= r.status %>">
         Status: <%= label %>

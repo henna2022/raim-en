@@ -561,14 +561,43 @@ router.get('/settings', requireAdmin, (req, res) => {
   res.render('admin/settings', {
     staff: req.session.staff, settings: getSettings(),
     smtpConfigured: mailer.smtpConfigured, saved: req.query.saved === '1',
+    error: req.query.error || null,
   });
 });
+// Numeric settings are clamped, never stored raw: a typo in retention_days
+// would otherwise be honoured by the twice-daily purge and delete live
+// reservations, and a non-numeric digest_hour silently disables the digest.
+// Out-of-range input keeps the current value rather than writing nonsense.
+const NUMERIC_SETTINGS = {
+  max_party_size: { min: 1, max: 19 },
+  booking_window_days: { min: 1, max: 180 },
+  retention_days: { min: 1, max: 3650 },
+  noshow_retention_days: { min: 1, max: 3650 },
+  digest_hour: { min: 0, max: 23, allowEmpty: true }, // empty = digest disabled
+};
 router.post('/settings', requireAdmin, (req, res) => {
   const keys = ['contact_email', 'contact_phone', 'address_en', 'max_party_size', 'booking_window_days', 'reply_sla_text', 'staff_notify_email', 'retention_days', 'noshow_retention_days', 'yeyak_url_permanent', 'yeyak_url_special', 'yeyak_admin_url', 'digest_hour'];
+  const rejected = [];
   for (const k of keys) {
-    if (req.body[k] != null) setSetting(k, String(req.body[k]).trim().slice(0, 500));
+    if (req.body[k] == null) continue;
+    const raw = String(req.body[k]).trim().slice(0, 500);
+    const rule = NUMERIC_SETTINGS[k];
+    if (rule) {
+      if (raw === '' && rule.allowEmpty) { setSetting(k, ''); continue; }
+      const n = Number.parseInt(raw, 10);
+      if (!Number.isInteger(n) || String(n) !== raw || n < rule.min || n > rule.max) {
+        rejected.push(k);
+        continue;
+      }
+      setSetting(k, String(n));
+      continue;
+    }
+    setSetting(k, raw);
   }
-  res.redirect('/admin/settings?saved=1');
+  const q = rejected.length
+    ? '?error=' + encodeURIComponent(`Ignored out-of-range value(s): ${rejected.join(', ')}. Other settings were saved.`)
+    : '?saved=1';
+  res.redirect('/admin/settings' + q);
 });
 
 // ---------- email outbox ----------
