@@ -66,9 +66,12 @@ async function post(body) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ secret: WEBHOOK_SECRET, ...body }),
     signal: AbortSignal.timeout(TIMEOUT_MS),
-    // Apps Script는 doPost를 실행한 뒤 script.googleusercontent.com으로 302를 보낸다.
-    // fetch가 302에서 POST를 GET으로 바꾸지만, 그건 결과를 받아오는 요청이라 본문은
-    // 이미 도달한 뒤다. 아래 카운트 검증이 이 가정을 매번 확인해 준다.
+    // Apps Script는 doPost를 실행한 뒤 302로 결과 페이지를 가리킨다. fetch가 302에서
+    // POST를 GET으로 바꾸지만 본문은 이미 도달한 뒤라 쓰기는 이루어진다.
+    // 실측: 간헐적으로(수 회 중 1회) 결과 대신 HTML 오류 페이지나 doGet 응답이 돌아온다
+    // — 쓰기는 성공했는데 응답만 못 받는 경우다. 그래서 아래 카운트 검증으로 걸러내고,
+    // 실패로 처리된 행은 다음 주기에 재전송한다. upsert/삭제 모두 신청코드 기준이라
+    // 재전송해도 중복 행이나 오삭제가 생기지 않는다.
     redirect: 'follow',
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -137,7 +140,9 @@ async function syncPendingOnce(limit) {
     synced = ok.length;
     if (failed.size) console.error(`[sheets] ${failed.size}건이 시트 쪽에서 거부됨: ${[...failed].join(', ')}`);
   } catch (err) {
-    console.error(`[sheets] 배치 동기화 실패 (${err.message}) — 행 단위로 재시도`);
+    // Apps Script가 응답을 흘리는 일이 간헐적으로 있어 이 경로는 정상 운영 중에도
+    // 이따금 탄다. 행 단위 재시도로 복구되므로 경고 수준으로만 남긴다.
+    console.warn(`[sheets] 배치 응답 확인 실패 (${err.message}) — 행 단위로 재시도`);
     for (const r of rows) {
       try {
         const failed = await postRows([toRow(r)]);
