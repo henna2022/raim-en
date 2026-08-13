@@ -135,24 +135,43 @@
         return;
       }
       dayMsg.style.display = 'none';
-      for (const s of data.sessions) {
-        const wrap = document.createElement('label');
-        wrap.className = 'session-opt';
-        const typeName = s.tour_type === 'permanent' ? 'Permanent Exhibition' : 'Special Exhibition';
-        const langBadge = s.language === 'en'
-          ? '<span class="badge english">ENGLISH</span>'
-          : '<span class="badge korean">KOREAN</span>';
-        const unavailable = s.past || s.soldout;
-        const note = s.past ? ' <em style="color:#b45309;">(already started)</em>'
-          : s.soldout ? ' <em style="color:#d22030;">(fully booked)</em>' : '';
-        wrap.innerHTML =
-          '<input type="radio" name="slot_id" value="' + s.id + '" required ' + (unavailable ? 'disabled' : '') + '>' +
-          '<span class="box"><span class="time">' + s.start_time + '–' + s.end_time + '</span>' +
-          '<span class="lbl">' + typeName + note + '</span>' +
-          langBadge + '</span>';
-        list.appendChild(wrap);
-        const input = wrap.querySelector('input');
-        if (preselect && Number(input.value) === preselect && !unavailable) input.checked = true;
+      // 전시별로 묶어서 보여준다. 시간순으로 섞으면 방문객이 "어느 전시를 볼지"를
+      // 먼저 정하지 못하고 목록을 훑어야 한다.
+      const groups = [
+        { type: 'permanent', title: 'Permanent Exhibition', desc: 'The museum’s main collection.' },
+        { type: 'special', title: 'Special Exhibition', desc: 'The current temporary exhibition.' },
+      ];
+      for (const g of groups) {
+        const items = data.sessions.filter(s => s.tour_type === g.type);
+        if (!items.length) continue;
+
+        const head = document.createElement('div');
+        head.className = 'session-group-head';
+        head.innerHTML = '<span class="t">' + g.title + '</span>' +
+          '<span class="d">' + g.desc + ' · ' + items.length + ' sessions, 40 minutes each</span>';
+        list.appendChild(head);
+
+        for (const s of items) {
+          const wrap = document.createElement('label');
+          wrap.className = 'session-opt';
+          const unavailable = s.past || s.soldout;
+          const note = s.past ? ' <em style="color:#b45309;">already started</em>'
+            : s.soldout ? ' <em style="color:#d22030;">fully booked</em>' : '';
+          // 한국어 해설이 기본이라 배지를 달지 않는다 — 영어 도슨트 회차만 눈에 띄게 한다.
+          const badge = s.language === 'en'
+            ? '<span class="badge english">ENGLISH GUIDE</span>'
+            : '<span class="lang-note">Korean guide · English audio guide provided</span>';
+          wrap.innerHTML =
+            '<input type="radio" name="slot_id" value="' + s.id + '" required ' + (unavailable ? 'disabled' : '') + '>' +
+            '<span class="box">' +
+              '<span class="ord">Session ' + (s.ordinal || '') + '</span>' +
+              '<span class="time">' + s.start_time + '–' + s.end_time + '</span>' +
+              '<span class="lbl">' + badge + note + '</span>' +
+            '</span>';
+          list.appendChild(wrap);
+          const input = wrap.querySelector('input');
+          if (preselect && Number(input.value) === preselect && !unavailable) input.checked = true;
+        }
       }
     } catch (e) {
       dayMsg.textContent = 'Could not load sessions. Please try again.';

@@ -291,8 +291,24 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 }
 .session-opt input:checked + .box { border-color: var(--blue); background: var(--blue-soft); }
 .session-opt input:disabled + .box { opacity: .45; cursor: not-allowed; }
-.session-opt .time { font-weight: 800; min-width: 96px; }
-.session-opt .lbl { flex: 1; }
+.session-opt .ord {
+  font-size: 12px; font-weight: 800; letter-spacing: .3px; color: var(--blue-dark);
+  background: var(--blue-soft); border-radius: 8px; padding: 4px 9px; min-width: 74px; text-align: center;
+}
+.session-opt input:disabled + .box .ord { background: var(--gray-card-2); color: var(--ink-faint); }
+.session-opt .time { font-weight: 800; min-width: 104px; }
+.session-opt .lbl { flex: 1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.session-opt .lang-note { font-size: 12.5px; color: var(--ink-faint); }
+.session-group-head { margin: 16px 0 4px; }
+.session-group-head:first-child { margin-top: 4px; }
+.session-group-head .t { display: block; font-weight: 800; font-size: 15px; }
+.session-group-head .d { display: block; font-size: 12.5px; color: var(--ink-faint); margin-top: 1px; }
+
+@media (max-width: 560px) {
+  .session-opt .box { flex-wrap: wrap; gap: 6px 10px; }
+  .session-opt .time { min-width: 0; }
+  .session-opt .lbl { flex-basis: 100%; }
+}
 .day-msg { padding: 14px 16px; border-radius: 12px; background: var(--amber-soft); color: var(--amber-ink); font-size: 14px; margin-top: 6px; }
 .checkline { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; color: var(--ink-soft); margin-top: 18px; }
 .checkline input { margin-top: 3px; }

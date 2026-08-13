@@ -97,11 +97,20 @@ function sessionsForDate(dateStr) {
     db.prepare('SELECT slot_id FROM soldout WHERE date = ?').all(dateStr).map(r => r.slot_id)
   );
   const rows = db.prepare('SELECT * FROM slots WHERE active = 1 ORDER BY start_time, tour_type').all();
-  const sessions = rows
-    .filter(s => slotRunsOn(s, dateStr, wd))
+  const running = rows.filter(s => slotRunsOn(s, dateStr, wd));
+  // 전시별 회차 번호. 그날 실제로 운영되는 회차만 세므로 주말·공휴일에 09:30이
+  // 붙으면 뒤 회차 번호가 하나씩 밀린다 — 직원·yeyak과 같은 번호를 써야 한다.
+  const ordinals = new Map();
+  for (const type of ['permanent', 'special']) {
+    running.filter(s => s.tour_type === type)
+      .sort((a, b) => a.start_time.localeCompare(b.start_time))
+      .forEach((s, i) => ordinals.set(s.id, i + 1));
+  }
+  const sessions = running
     .map(s => ({
       id: s.id,
       tour_type: s.tour_type,
+      ordinal: ordinals.get(s.id),
       start_time: s.start_time,
       end_time: s.end_time,
       language: s.language,
