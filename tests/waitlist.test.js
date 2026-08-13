@@ -53,7 +53,7 @@ test('W1: waitlist action (no soldout mark) -> waitlisted + visitor emailed', as
 test('W2: waitlisted blocks duplicate requests; My Booking shows waitlist state', async () => {
   const dup = await postForm(ctx.baseUrl, ctx.jar, '/reserve', {
     date: res1.date, slot_id: String(res1.slot_id), name: 'Dup Try', email: res1.email,
-    country: '', party_size: '2', notes: '', agree: 'on',
+    country: 'Japan', party_size: '2', agree: 'on',
   }, { csrfPage: '/reserve' });
   assert.equal(dup.status, 400);
   assert.match(await dup.text(), /already have a request for this session/);

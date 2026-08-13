@@ -129,3 +129,39 @@ test('H9: 표에 없는 연도는 공휴일 없음으로 처리되고 월요일 
   assert.equal(closure('2035-05-07').closed, true, '2035-05-07은 월요일');
   assert.equal(closure('2035-05-08').closed, false);
 });
+
+test('H10: 정정 마이그레이션은 각자 플래그를 가져, 먼저 적용된 DB도 뒤 정정을 받는다', () => {
+  // 실제로 겪은 버그: 인원 상한 정정을 시간표 정정 플래그 안에 넣었더니,
+  // 시간표 정정이 이미 끝난 DB는 인원 정정을 영영 못 받았다.
+  const { DatabaseSync } = require('node:sqlite');
+  const fs = require('node:fs');
+  const os = require('node:os');
+  const path = require('node:path');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'raim-test-mig-'));
+
+  // 시간표 정정만 끝난 옛 DB를 흉내낸다: 스키마를 만들고 플래그를 미리 박아둔다.
+  {
+    const seed = new DatabaseSync(path.join(dir, 'raim.db'));
+    seed.exec(`CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);`);
+    seed.prepare(`INSERT INTO settings (key,value) VALUES ('schedule_40min_fix','1'),('max_party_size','6')`).run();
+    seed.close();
+  }
+
+  const saved = process.env.DATA_DIR;
+  process.env.DATA_DIR = dir;
+  for (const k of Object.keys(require.cache)) {
+    if (k.includes('/src/')) delete require.cache[k];
+  }
+  try {
+    const { db } = require('../src/db');
+    const v = db.prepare(`SELECT value FROM settings WHERE key='max_party_size'`).get().value;
+    assert.equal(v, '5', '시간표 플래그가 이미 있어도 인원 정정은 적용되어야 한다');
+    db.close();
+  } finally {
+    process.env.DATA_DIR = saved;
+    for (const k of Object.keys(require.cache)) {
+      if (k.includes('/src/')) delete require.cache[k];
+    }
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});

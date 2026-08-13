@@ -2,10 +2,15 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "raim-en",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["start"],
-      "cwd": "/Users/henna/Desktop/raim-en",
+      "name": "raim-en-preview",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "--env-file-if-exists=.env",
+        "src/app.js"
+      ],
+      "env": {
+        "DATA_DIR": "/private/tmp/claude-501/-Users-henna-Desktop-raim-en/6e691d1f-e6c3-494b-9be1-10a7561a5d68/scratchpad/preview-data"
+      },
       "port": 4310
     }
   ]

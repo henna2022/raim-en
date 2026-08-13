@@ -57,15 +57,30 @@
     <div class="grid cols-2" style="gap:12px;">
       <div>
         <label class="field" for="party_size">Party size</label>
-        <input type="number" id="party_size" name="party_size" required min="1" max="<%= settings.max_party_size %>" value="<%= form.party_size || 2 %>">
+        <select id="party_size" name="party_size" required>
+          <% for (let n = 1; n <= Number(settings.max_party_size || 5); n++) { %>
+            <option value="<%= n %>" <%= Number(form.party_size || 2) === n ? 'selected' : '' %>><%= n %><%= n === 1 ? ' person' : ' people' %></option>
+          <% } %>
+        </select>
+        <p class="form-hint">Groups of 20–60 book by email instead.</p>
       </div>
       <div>
-        <label class="field" for="country">Country <span class="opt">(optional)</span></label>
-        <input type="text" id="country" name="country" maxlength="60" value="<%= form.country || '' %>" placeholder="Helps us prepare">
+        <label class="field" for="country">Country</label>
+        <select id="country" name="country" required>
+          <option value="" <%= form.country ? '' : 'selected' %> disabled>Select your country</option>
+          <optgroup label="Frequently selected">
+            <% for (const c of countries.COMMON) { %>
+              <option value="<%= c %>" <%= form.country === c ? 'selected' : '' %>><%= c %></option>
+            <% } %>
+          </optgroup>
+          <optgroup label="All countries">
+            <% for (const c of countries.COUNTRIES) { %>
+              <option value="<%= c %>" <%= form.country === c ? 'selected' : '' %>><%= c %></option>
+            <% } %>
+          </optgroup>
+        </select>
       </div>
     </div>
-    <label class="field" for="notes">Anything we should know? <span class="opt">(optional)</span></label>
-    <textarea id="notes" name="notes" rows="2" maxlength="500" placeholder="Accessibility needs, questions…"><%= form.notes || '' %></textarea>
 
     <div class="checkline">
       <input type="checkbox" id="agree" name="agree" required <%= form.agree ? 'checked' : '' %>>

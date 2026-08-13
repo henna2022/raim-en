@@ -234,7 +234,8 @@ async function makeReservation(baseUrl, jar, overrides = {}) {
     slot_id: String(slotId),
     name: overrides.name != null ? overrides.name : 'Test Visitor',
     email,
-    country: overrides.country != null ? overrides.country : 'Testland',
+    // 국가는 목록(src/countries.js)에 있는 값이어야 서버 검증을 통과한다.
+    country: overrides.country != null ? overrides.country : 'Japan',
     party_size: String(overrides.party_size != null ? overrides.party_size : 2),
     notes: overrides.notes != null ? overrides.notes : '',
     agree: overrides.agree != null ? overrides.agree : 'on',

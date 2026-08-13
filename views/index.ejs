@@ -74,34 +74,22 @@
 <section id="walkin">
   <div class="wrap">
     <span class="sec-label">Two ways in</span>
-    <h2 class="sec">Guided tour or walk-in</h2>
-    <p class="sec-sub">Two ways to enjoy the museum — with a booking, or just by walking in.</p>
+    <h2 class="sec">Do I need to book?</h2>
+    <p class="sec-sub">Only the guided exhibition tours need a reservation. Everything else you can just walk into.
+    <% if (enTours.available) { %>English docent tours run <%= enTours.summary.replace(/^Every /, 'every ') %>;
+    on other days an <strong>English audio guide (MP3)</strong> is provided so you can follow the Korean-guided
+    sessions.<% } %></p>
     <div class="grid cols-2">
       <div class="card compare-tour">
-        <h3>With a reservation <span class="badge res-needed">BOOKING REQUIRED</span></h3>
-        <ul>
-          <li><strong>Permanent Exhibition Tour</strong> (Floors 1–3) — docent-guided, 6 sessions a day</li>
-          <li><strong>Special Exhibition Tour</strong> — currently <em>Mystery Playground «RE:PLAY»</em> (4F, until Aug 30, 2026)</li>
-          <% if (enTours.available) { %>
-          <li><span class="badge english">ENGLISH</span> docent tours — <%= enTours.summary %></li>
-          <% } else { %>
-          <li>English docent tours are not currently scheduled.</li>
-          <% } %>
-          <li><span class="badge korean">KOREAN</span> all other sessions are guided in Korean — everyone is welcome to join</li>
-        </ul>
-        <div class="note teal">An <strong>English audio guide (MP3)</strong> will be provided for Korean-guided
-        sessions, so you can listen along in English on any day of the week.</div>
+        <h3>Guided tours <span class="badge res-needed">BOOKING REQUIRED</span></h3>
+        <p>Permanent and Special exhibition tours, led by a docent. Pick a date and session, and staff confirm
+        your seats by email — no Korean phone number needed.</p>
         <p style="margin-top:16px;"><a class="btn btn-outline" href="/reserve">Book a session</a></p>
       </div>
       <div class="card compare-walk">
-        <h3>Without a reservation <span class="badge walkin">WALK-IN</span></h3>
-        <ul>
-          <li><strong>Robot &amp; AI Garden</strong> — 1F lobby, open through 2028</li>
-          <li><strong>Self-driving Level 3</strong> and the <strong>Trolley Dilemma</strong> — interactive stations on 1F</li>
-          <li><strong>RAIM PLAY</strong> — drop-in creative experience (4F, Tue–Sun)</li>
-        </ul>
-        <div class="note warn">Scheduled education programs are conducted in <strong>Korean</strong> —
-        open viewing is welcome, but classes themselves run in Korean only.</div>
+        <h3>Everything else <span class="badge walkin">WALK-IN</span></h3>
+        <p>The Robot &amp; AI Garden, the 1F interactive stations and RAIM PLAY are open to anyone during
+        opening hours — no booking, no ticket.</p>
       </div>
     </div>
   </div>

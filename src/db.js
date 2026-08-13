@@ -89,6 +89,9 @@ CREATE TABLE IF NOT EXISTS sheet_deletes (
   code TEXT NOT NULL UNIQUE,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+-- 시트 쪽에서 "지울 행을 못 찾음"으로 돌아온 횟수. 실측에서 동기화 직후 삭제를
+-- 보내면 시트 읽기가 아직 새 행을 못 봐 0건이 나오는 경합이 있었다. 그때 큐를
+-- 비우면 파기된 개인정보가 시트에 영구히 남으므로, 몇 번 더 시도한다.
 
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
@@ -133,6 +136,7 @@ ensureColumn('reservations', 'sheet_synced', 'sheet_synced INTEGER NOT NULL DEFA
 // 공휴일에도 추가로 여는 회차(기획전시 09:30). 요일 목록만으로는 표현할 수 없어
 // 별도 플래그로 둔다 — src/helpers.js slotRunsOn 참고.
 ensureColumn('slots', 'also_on_holiday', 'also_on_holiday INTEGER NOT NULL DEFAULT 0');
+ensureColumn('sheet_deletes', 'attempts', 'attempts INTEGER NOT NULL DEFAULT 0');
 
 // 상태나 개인정보가 바뀌면 자동으로 미러 대기열에 다시 넣는다. 새 코드 경로에서
 // sheets.nudge()를 부르는 걸 잊어도 시트가 조용히 낡지 않도록 하는 안전망.
@@ -235,7 +239,7 @@ function seed() {
     contact_email: 'raim@seoulraim.com',
     contact_phone: '+82-2-920-4300',
     address_en: '56, Madeul-ro 13-gil, Dobong-gu, Seoul, Republic of Korea',
-    max_party_size: '6',
+    max_party_size: '5',
     booking_window_days: '60',
     reply_sla_text: 'Requests are usually reviewed within 2 business days (the museum is closed on Mondays).',
     staff_notify_email: 'raim@seoulraim.com',
@@ -299,6 +303,17 @@ function correctScheduleTo40Minutes() {
   if (changed > 0) console.log(`[schedule] 시간표 정정 ${changed}건 적용 (전 회차 40분, 기획 주말 09:30 추가)`);
 }
 correctScheduleTo40Minutes();
+
+// 일회성 정정: 1회 예약 인원 상한 6 → 5.
+// 별도 플래그를 쓰는 이유는 위 주석 참고 — 정정마다 플래그를 따로 둔다.
+function correctMaxPartySize() {
+  const already = db.prepare(`SELECT 1 FROM settings WHERE key = 'max_party_5_fix'`).get();
+  if (already) return;
+  const changed = db.prepare(`UPDATE settings SET value='5' WHERE key='max_party_size' AND value='6'`).run().changes;
+  db.prepare(`INSERT OR IGNORE INTO settings (key, value) VALUES ('max_party_5_fix','1')`).run();
+  if (changed) console.log('[settings] 1회 예약 인원 상한을 5명으로 정정');
+}
+correctMaxPartySize();
 
 // ---------- settings helpers ----------
 function getSettings() {

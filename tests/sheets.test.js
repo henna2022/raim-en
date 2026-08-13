@@ -43,7 +43,17 @@ function startMockWebhook() {
       if (!parsed || parsed.secret !== state.secret) result = { ok: false, error: 'unauthorized' };
       else if (state.mode === 'reject') result = { ok: false, error: 'simulated rejection' };
       else if (state.mode === 'doget') result = { ok: true, service: 'raim-en sheet mirror' }; // 쓰기 건수 없음
-      else result = { ok: true, appended: (parsed.rows || []).length, updated: 0 };
+      else if (state.mode === 'notfound') result = { ok: true, appended: 0, updated: 0, deleted: 0, failed: [] };
+      else result = {
+        ok: true,
+        appended: (parsed.rows || []).length,
+        updated: 0,
+        // 실제 Apps Script처럼 삭제 건수를 돌려준다. 이 값이 없으면 서버가
+        // "못 찾음"으로 보고 재시도하므로, 목이 이를 흉내내지 않으면 테스트가
+        // 실제와 다른 경로를 검증하게 된다.
+        deleted: (parsed.deleteCodes || []).length,
+        failed: [],
+      };
 
       // doPost는 이미 실행됐고, 결과는 리다이렉트 대상에서 GET으로 가져간다.
       const key = String(++state.seq);
@@ -217,6 +227,26 @@ test('SH8: 보존기한이 지나 파기되면 시트에서도 삭제된다', as
   assert.equal(sheets.deletesPending(), 0);
   const del = mock.requests.filter(q => q && q.deleteCodes);
   assert.ok(del.at(-1).deleteCodes.includes(r.code), '삭제 요청에 해당 코드가 실려야 한다');
+});
+
+test('SH9b: 시트가 "행을 못 찾음"(deleted=0)으로 답하면 큐를 비우지 않고 재시도한다', async () => {
+  // 실측: 동기화 직후 삭제를 보내면 시트 읽기가 새 행을 아직 못 봐 0건이 나온다.
+  // 그때 큐를 비우면 파기된 개인정보가 시트에 영구히 남는다.
+  mock.mode = 'ok';
+  const r = await book({ email: uniqueEmail() });
+  withDb(ctx.dataDir, (db) =>
+    db.prepare("UPDATE reservations SET visit_date = '2020-01-01' WHERE code = ?").run(r.code));
+  require('../src/maintenance').purgeOldData();
+  assert.equal(sheets.deletesPending(), 1);
+
+  mock.mode = 'notfound';
+  const out = await sheets.flushDeletes();
+  assert.equal(out.deleted, 0);
+  assert.equal(sheets.deletesPending(), 1, '못 찾았다고 큐를 비우면 안 된다');
+
+  mock.mode = 'ok';
+  assert.equal((await sheets.flushDeletes()).deleted, 1);
+  assert.equal(sheets.deletesPending(), 0);
 });
 
 test('SH9: 시트 삭제가 실패하면 큐에 남아 다음 주기에 재시도된다', async () => {

@@ -6,6 +6,7 @@ const {
   getReservationByCode, STATUS_BADGE, getSettings, getEnglishTours,
 } = require('../helpers');
 const mailer = require('../mailer');
+const countries = require('../countries');
 const sheets = require('../sheets');
 const { rateLimit } = require('../ratelimit');
 
@@ -24,7 +25,7 @@ const reserveLimiter = rateLimit({
       maxDate: addDays(todayStr(), Number(s.booking_window_days || 60)),
       error: 'Too many requests. Please wait a few minutes and try again.',
       form: {},
-      enTours: getEnglishTours(),
+      enTours: getEnglishTours(), countries,
     });
   },
 });
@@ -62,7 +63,7 @@ router.get('/reserve', (req, res) => {
     maxDate: addDays(todayStr(), Number(s.booking_window_days || 60)),
     error: null,
     form: {},
-    enTours: getEnglishTours(),
+    enTours: getEnglishTours(), countries,
   });
 });
 
@@ -79,7 +80,7 @@ router.get('/api/sessions', (req, res) => {
 
 router.post('/reserve', reserveLimiter, async (req, res) => {
   const s = getSettings();
-  const maxParty = Number(s.max_party_size || 6);
+  const maxParty = Number(s.max_party_size || 5);
   const b = req.body || {};
 
   // Honeypot: hidden "website" field only a bot would fill in. Pretend success —
@@ -95,7 +96,6 @@ router.post('/reserve', reserveLimiter, async (req, res) => {
     email: String(b.email || '').trim().slice(0, 120).toLowerCase(),
     country: String(b.country || '').trim().slice(0, 60),
     party_size: Number(b.party_size || 0),
-    notes: String(b.notes || '').trim().slice(0, 500),
     agree: b.agree === 'on' || b.agree === 'true',
   };
 
@@ -103,7 +103,7 @@ router.post('/reserve', reserveLimiter, async (req, res) => {
     settings: s, today: todayStr(),
     maxDate: addDays(todayStr(), Number(s.booking_window_days || 60)),
     error: msg, form,
-    enTours: getEnglishTours(),
+    enTours: getEnglishTours(), countries,
   });
 
   if (!isValidDateStr(form.date)) return fail('Please pick a valid date.');
@@ -120,6 +120,8 @@ router.post('/reserve', reserveLimiter, async (req, res) => {
   if (!EMAIL_RE.test(form.email)) return fail('Please enter a valid email address.');
   if (!Number.isInteger(form.party_size) || form.party_size < 1 || form.party_size > maxParty)
     return fail(`Party size must be between 1 and ${maxParty}. Groups of 20–60 should book by email instead.`);
+  // 목록에 있는 국가만 받는다 — 폼을 우회한 임의 값이 통계를 오염시키지 않도록.
+  if (!countries.isValid(form.country)) return fail('Please select your country from the list.');
   if (!form.agree) return fail('Please agree to the privacy notice and no-show policy.');
 
   const upcomingCount = db.prepare(
@@ -136,9 +138,9 @@ router.post('/reserve', reserveLimiter, async (req, res) => {
   let code = genCode();
   while (db.prepare('SELECT 1 FROM reservations WHERE code = ?').get(code)) code = genCode();
 
-  db.prepare(`INSERT INTO reservations (code, slot_id, visit_date, name, email, country, party_size, notes)
-              VALUES (?,?,?,?,?,?,?,?)`)
-    .run(code, form.slot_id, form.date, form.name, form.email, form.country, form.party_size, form.notes);
+  db.prepare(`INSERT INTO reservations (code, slot_id, visit_date, name, email, country, party_size)
+              VALUES (?,?,?,?,?,?,?)`)
+    .run(code, form.slot_id, form.date, form.name, form.email, form.country, form.party_size);
 
   const r = getReservationByCode(code);
   sheets.nudge(); // await 하지 않는다 — 시트 지연이 방문자 응답을 늦추면 안 된다

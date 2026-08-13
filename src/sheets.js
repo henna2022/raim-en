@@ -164,16 +164,36 @@ function queueDeletes(codes) {
   return codes.length;
 }
 
+// 시트가 "지울 행을 못 찾았다"(deleted=0)고 답해도 큐를 비우면 안 된다 — 실측에서
+// 동기화 직후 삭제를 보내면 시트 읽기가 아직 새 행을 못 봐 0건이 나오는 경합이 있었고,
+// 그대로 비우면 파기된 개인정보가 시트에 영구히 남는다. 몇 번 더 시도한 뒤에야 포기한다
+// (이미 없는 코드라면 재시도해도 계속 0이므로 무한 반복을 막아야 한다).
+const DELETE_MAX_ATTEMPTS = 5;
+
 async function flushDeletes() {
   if (!enabled) return { deleted: 0 };
-  const pending = db.prepare('SELECT code FROM sheet_deletes ORDER BY id LIMIT ?').all(BATCH).map(r => r.code);
+  const pending = db.prepare('SELECT code, attempts FROM sheet_deletes ORDER BY id LIMIT ?').all(BATCH);
   if (pending.length === 0) return { deleted: 0 };
+  const codes = pending.map(r => r.code);
   try {
-    await post({ deleteCodes: pending });
-    const del = db.prepare('DELETE FROM sheet_deletes WHERE code = ?');
-    for (const code of pending) del.run(code);
-    console.log(`[sheets] 보존기한 만료 ${pending.length}건 시트에서 삭제`);
-    return { deleted: pending.length };
+    const res = await post({ deleteCodes: codes });
+    const deleted = res.deleted | 0;
+    if (deleted >= codes.length) {
+      const del = db.prepare('DELETE FROM sheet_deletes WHERE code = ?');
+      for (const code of codes) del.run(code);
+      console.log(`[sheets] 보존기한 만료 ${deleted}건 시트에서 삭제`);
+      return { deleted };
+    }
+    // 일부만 지워졌다. 어느 코드가 남았는지는 알 수 없으므로 전부 재시도 대상으로
+    // 두되, 시도 횟수를 올려 무한 반복은 막는다.
+    const bump = db.prepare('UPDATE sheet_deletes SET attempts = attempts + 1 WHERE code = ?');
+    for (const code of codes) bump.run(code);
+    const giveUp = db.prepare('DELETE FROM sheet_deletes WHERE attempts >= ?').run(DELETE_MAX_ATTEMPTS).changes;
+    if (giveUp > 0) {
+      console.error(`[sheets] ${giveUp}건은 ${DELETE_MAX_ATTEMPTS}회 시도해도 시트에서 찾지 못해 포기 — 시트에서 직접 확인 필요`);
+    }
+    if (deleted > 0) console.log(`[sheets] 보존기한 만료 ${deleted}건 삭제, 나머지는 다음 주기에 재시도`);
+    return { deleted, retrying: codes.length - deleted };
   } catch (err) {
     console.error(`[sheets] 시트 삭제 실패 (${err.message}) — 다음 주기에 재시도`);
     return { deleted: 0, error: String(err.message || err) };

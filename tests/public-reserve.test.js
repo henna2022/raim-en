@@ -193,7 +193,7 @@ test('A13: duplicate email+date+slot -> 400', async () => {
   // Same email + date + slot_id as A6's already-pending reservation.
   const res = await postForm(ctx.baseUrl, ctx.jar, '/reserve', {
     date: ctx.a6.date, slot_id: String(ctx.a6.slot_id), name: 'A13 Tester',
-    email: ctx.a6.email, party_size: '2', agree: 'on',
+    email: ctx.a6.email, country: 'Japan', party_size: '2', agree: 'on',
   });
   assert.equal(res.status, 400);
   const body = await res.text();
@@ -233,7 +233,7 @@ test('A14c: create 3rd of 3 upcoming reservations for the same email', async () 
 test('A14d: 4th reservation for the same email -> 400, "3 upcoming" in message', async () => {
   const res = await postForm(ctx.baseUrl, ctx.jar, '/reserve', {
     date: ctx.a14.date, slot_id: String(fourthSlotId), name: 'A14 Tester',
-    email: ctx.a14.email, party_size: '2', agree: 'on',
+    email: ctx.a14.email, country: 'Japan', party_size: '2', agree: 'on',
   });
   assert.equal(res.status, 400);
   const body = await res.text();
@@ -258,4 +258,58 @@ test('A15: honeypot (website) filled -> 302 but no DB row, no email logged', asy
     const emailCount = db.prepare('SELECT COUNT(*) AS c FROM email_log WHERE to_addr = ?').get(email).c;
     assert.equal(emailCount, 0, 'honeypot submission must not send/log any email');
   });
+});
+
+test('A16: country must come from the list — free text is rejected', async () => {
+  await restartApp(ctx); // 공개 폼 rate limit 리셋
+  const base = {
+    date: nextWednesday(), name: 'Country Tester', email: uniqueEmail(),
+    party_size: '2', agree: 'on',
+  };
+  const day = await (await get(ctx.baseUrl, null, `/api/sessions?date=${base.date}`)).json();
+  const slot_id = String(day.sessions[0].id);
+
+  for (const bad of ['Testland', 'kr', '', '   ']) {
+    const res = await postForm(ctx.baseUrl, ctx.jar, '/reserve', { ...base, slot_id, country: bad });
+    assert.equal(res.status, 400, `country="${bad}" must be rejected`);
+    assert.match(await res.text(), /select your country/i);
+  }
+
+  const ok = await postForm(ctx.baseUrl, ctx.jar, '/reserve', { ...base, slot_id, country: 'Japan' });
+  assert.equal(ok.status, 302, '목록에 있는 국가는 통과해야 한다');
+});
+
+test('A17: party size is capped at 5, and the form offers exactly 1–5', async () => {
+  await restartApp(ctx);
+  const date = nextWednesday();
+  const day = await (await get(ctx.baseUrl, null, `/api/sessions?date=${date}`)).json();
+  const res = await postForm(ctx.baseUrl, ctx.jar, '/reserve', {
+    date, slot_id: String(day.sessions[0].id), name: 'Six Tester', email: uniqueEmail(),
+    country: 'Japan', party_size: '6', agree: 'on',
+  });
+  assert.equal(res.status, 400, '6명은 거부되어야 한다');
+  assert.match(await res.text(), /between 1 and 5/);
+
+  const form = await (await get(ctx.baseUrl, ctx.jar, '/reserve')).text();
+  const options = [...form.matchAll(/<option value="(\d+)"[^>]*>\d+ (?:person|people)</g)].map(m => m[1]);
+  assert.deepEqual(options, ['1', '2', '3', '4', '5'], '폼에 1~5명만 있어야 한다');
+});
+
+test('A18: the free-text notes field is gone from the form and never stored', async () => {
+  const form = await (await get(ctx.baseUrl, ctx.jar, '/reserve')).text();
+  assert.ok(!/name="notes"/.test(form), '요청사항 입력란이 없어야 한다');
+
+  await restartApp(ctx);
+  const date = nextWednesday();
+  const day = await (await get(ctx.baseUrl, null, `/api/sessions?date=${date}`)).json();
+  const email = uniqueEmail();
+  // 폼을 우회해 notes 를 밀어넣어도 저장되면 안 된다.
+  const res = await postForm(ctx.baseUrl, ctx.jar, '/reserve', {
+    date, slot_id: String(day.sessions[1].id), name: 'Notes Tester', email,
+    country: 'Japan', party_size: '2', agree: 'on', notes: 'wheelchair user — must not be stored',
+  });
+  assert.equal(res.status, 302);
+  const stored = withDb(ctx.dataDir, (db) =>
+    db.prepare('SELECT notes FROM reservations WHERE email = ?').get(email));
+  assert.equal(stored.notes, '', '전송된 notes 는 무시되어야 한다');
 });

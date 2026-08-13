@@ -55,7 +55,7 @@ test('SO2: POST /reserve for a sold-out session -> 400, no reservation created',
   const before = withDb(ctx.dataDir, (db) => db.prepare('SELECT COUNT(*) AS c FROM reservations').get().c);
   const res = await postForm(ctx.baseUrl, ctx.jar, '/reserve', {
     date: res1.date, slot_id: String(res1.slot_id), name: 'Late Visitor', email: uniqueEmail(),
-    country: 'Testland', party_size: '2', notes: '', agree: 'on',
+    country: 'Japan', party_size: '2', agree: 'on',
   }, { csrfPage: '/reserve' });
   assert.equal(res.status, 400);
   // Must match the error box specifically — the phrase "(fully booked)" also
