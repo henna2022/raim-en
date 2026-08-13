@@ -51,7 +51,8 @@ function makeSheet(name) {
       };
     },
     appendRow: (vals) => { grid.push([...vals]); },
-    deleteRow: (r) => { grid.splice(r - 1, 1); },
+    deleteRow: (r) => { calls.write++; grid.splice(r - 1, 1); },
+    deleteRows: (r, n) => { calls.write++; grid.splice(r - 1, n); },
     setFrozenRows: () => {},
     _grid: grid,
     _calls: calls,
@@ -219,4 +220,49 @@ test('GS13: 갱신 시 우리 열이 아닌 칸(직원이 끼워 넣은 열)은 
   h.post({ secret: 'S3CRET', rows: [row({ status: '확정' })] });  // 상태 갱신
   assert.equal(sheet._grid[at][1], '전화 확인함', '직원이 쓴 열을 덮어쓰면 안 된다');
   assert.equal(sheet._grid[at][2], '확정', '우리 열은 정상 갱신되어야 한다');
+});
+
+test('GS14: 신규 행 여러 건은 왕복 횟수가 건수와 무관하게 일정하다', () => {
+  // 실측: 행마다 따로 쓰면 행당 약 7초 → 50건이면 실행 시간 제한 초과.
+  // 신규 행은 setValues 한 번으로 붙여야 한다.
+  const h = run(SCRIPT);
+  h.post({ secret: 'S3CRET', rows: [row()] }); // 헤더 생성
+  const before = h.sheet._calls.write;
+  const rows = [];
+  for (let i = 0; i < 30; i++) rows.push(row({ code: `RAIM-N${String(i).padStart(3, '0')}` }));
+  const r = h.post({ secret: 'S3CRET', rows });
+  const writes = h.sheet._calls.write - before;
+  assert.equal(r.appended, 30);
+  assert.ok(writes <= 2, `신규 30건의 쓰기 왕복은 2회 이하여야 한다 (실제 ${writes}회)`);
+  // 실제로 30줄이 들어갔는지도 확인
+  assert.equal(h.sheet._grid.length, 1 + 1 + 30, '헤더 + 기존 1건 + 신규 30건');
+});
+
+test('GS15: 연속된 행 삭제는 한 번의 호출로 처리된다', () => {
+  const h = run(SCRIPT);
+  const codes = [];
+  for (let i = 0; i < 10; i++) codes.push(`RAIM-D${i}`);
+  h.post({ secret: 'S3CRET', rows: codes.map(c => row({ code: c })) });
+  const before = h.sheet._calls.write;
+  const r = h.post({ secret: 'S3CRET', deleteCodes: codes });
+  const writes = h.sheet._calls.write - before;
+  assert.equal(r.deleted, 10);
+  assert.ok(writes <= 2, `연속 10건 삭제는 쓰기 2회 이하 (실제 ${writes}회)`);
+  assert.equal(h.sheet._grid.length, 1, '헤더만 남아야 한다');
+});
+
+test('GS16: 흩어진 행을 지워도 엉뚱한 줄이 지워지지 않는다', () => {
+  const h = run(SCRIPT);
+  const codes = ['A', 'B', 'C', 'D', 'E'].map(x => `RAIM-${x}`);
+  h.post({ secret: 'S3CRET', rows: codes.map(c => row({ code: c })) });
+  h.post({ secret: 'S3CRET', deleteCodes: ['RAIM-A', 'RAIM-C', 'RAIM-E'] });
+  assert.deepEqual(h.sheet._grid.slice(1).map(x => x[0]), ['RAIM-B', 'RAIM-D']);
+});
+
+test('GS17: 같은 배치에 같은 코드가 두 번 오면 중복 행이 생기지 않는다', () => {
+  const h = run(SCRIPT);
+  const r = h.post({ secret: 'S3CRET', rows: [row({ status: '접수' }), row({ status: '확정' })] });
+  assert.equal(r.appended, 1, '중복 코드는 한 줄로 합쳐져야 한다');
+  assert.equal(h.sheet._grid.length, 2, '헤더 + 1행');
+  assert.equal(h.sheet._grid[1][1], '확정', '나중 값이 반영되어야 한다');
 });

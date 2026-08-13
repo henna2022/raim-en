@@ -74,14 +74,18 @@ function doPost(e) {
       var result = { ok: true, appended: 0, updated: 0, deleted: 0, failed: [] };
       var index = readKeyColumn_(sheet, col.key);
 
+      // 신규 행은 모아서 한 번에 쓴다. 행마다 setValues를 부르면 호출당 서버 왕복이라
+      // 실측 기준 행당 약 7초가 걸려, 수십 건 배치가 실행 시간 제한을 넘긴다.
+      var pendingAppends = [];
       for (var i = 0; i < rows.length; i++) {
         try {
-          upsertRow_(sheet, col, index, rows[i], result);
+          upsertRow_(sheet, col, index, rows[i], result, pendingAppends);
         } catch (rowErr) {
           // 한 행이 실패해도 배치 전체를 막지 않는다 — 서버가 그 코드만 재시도한다.
           result.failed.push(String(rows[i] && rows[i].code || '?'));
         }
       }
+      if (pendingAppends.length) appendBlock_(sheet, col, pendingAppends, index, result);
       if (deleteCodes.length) deleteRows_(sheet, col.key, deleteCodes, result);
 
       SpreadsheetApp.flush();
@@ -138,7 +142,7 @@ function readKeyColumn_(sheet, keyCol) {
   return map;
 }
 
-function upsertRow_(sheet, col, index, row, result) {
+function upsertRow_(sheet, col, index, row, result, pendingAppends) {
   var code = String(row.code || '');
   if (!code) throw new Error('missing code');
   var values = toValues_(row);
@@ -158,11 +162,49 @@ function upsertRow_(sheet, col, index, row, result) {
     writeRow_(sheet, col, at, values, false);
     result.updated++;
   } else {
-    var newRow = sheet.getLastRow() + 1;
-    writeRow_(sheet, col, newRow, values, true);
-    index[code] = newRow;
+    // 같은 배치에 같은 코드가 두 번 오면 뒤엣것으로 덮어써 중복 행을 막는다.
+    for (var p = 0; p < pendingAppends.length; p++) {
+      if (pendingAppends[p].code === code) { pendingAppends[p].values = values; return; }
+    }
+    pendingAppends.push({ code: code, values: values });
+  }
+}
+
+// 신규 행 전체를 setValues 한 번으로 붙인다 — 건수와 무관하게 왕복 2회.
+function appendBlock_(sheet, col, items, index, result) {
+  var span = colSpan_(col);
+  var start = sheet.getLastRow() + 1;
+  var block = [];
+  for (var i = 0; i < items.length; i++) {
+    block.push(fillLine_(col, span, blankLine_(span.width), items[i].values));
+  }
+  sheet.getRange(start, span.min, block.length, span.width).setValues(block);
+  for (var j = 0; j < items.length; j++) {
+    index[items[j].code] = start + j;
     result.appended++;
   }
+}
+
+function colSpan_(col) {
+  var min = null;
+  var max = null;
+  for (var i = 0; i < HEADERS.length; i++) {
+    var c = col.map[HEADERS[i]];
+    if (min === null || c < min) min = c;
+    if (max === null || c > max) max = c;
+  }
+  return { min: min, max: max, width: max - min + 1 };
+}
+
+function blankLine_(width) {
+  var line = [];
+  for (var i = 0; i < width; i++) line.push('');
+  return line;
+}
+
+function fillLine_(col, span, line, values) {
+  for (var i = 0; i < HEADERS.length; i++) line[col.map[HEADERS[i]] - span.min] = values[i];
+  return line;
 }
 
 // 한 줄을 setValues 한 번으로 쓴다. 셀마다 setValue를 부르면 호출당 서버 왕복이라
@@ -171,21 +213,12 @@ function upsertRow_(sheet, col, index, row, result) {
 // 열 구간을 통째로 다루되, 갱신 시에는 기존 값을 먼저 읽어 우리 것이 아닌 칸을
 // 덮어쓰지 않는다.
 function writeRow_(sheet, col, rowNum, values, isNew) {
-  var cols = [];
-  for (var i = 0; i < HEADERS.length; i++) cols.push(col.map[HEADERS[i]]);
-  var min = Math.min.apply(null, cols);
-  var max = Math.max.apply(null, cols);
-  var span = max - min + 1;
-
-  var line;
-  if (isNew || rowNum > sheet.getLastRow()) {
-    line = [];
-    for (var k = 0; k < span; k++) line.push('');
-  } else {
-    line = sheet.getRange(rowNum, min, 1, span).getValues()[0];
-  }
-  for (var j = 0; j < HEADERS.length; j++) line[cols[j] - min] = values[j];
-  sheet.getRange(rowNum, min, 1, span).setValues([line]);
+  var span = colSpan_(col);
+  var line = isNew
+    ? blankLine_(span.width)
+    : sheet.getRange(rowNum, span.min, 1, span.width).getValues()[0];
+  sheet.getRange(rowNum, span.min, 1, span.width)
+    .setValues([fillLine_(col, span, line, values)]);
 }
 
 // 보존기한이 지나 raim-en에서 삭제된 건을 시트에서도 지운다.
@@ -198,9 +231,18 @@ function deleteRows_(sheet, keyCol, codes, result) {
     if (at) targets.push(at);
   }
   targets.sort(function (a, b) { return b - a; });
-  for (var j = 0; j < targets.length; j++) {
-    sheet.deleteRow(targets[j]);
-    result.deleted++;
+  // 연속된 행은 deleteRows로 한 번에 지운다. 한 행씩 지우면 삭제 건수만큼
+  // 서버 왕복이 발생해 보존기한 정리가 실행 시간 제한에 걸릴 수 있다.
+  var j = 0;
+  while (j < targets.length) {
+    var end = targets[j];       // 가장 아래쪽 행
+    var run = 1;
+    while (j + run < targets.length && targets[j + run] === end - run) run++;
+    var startRow = end - run + 1;
+    if (run === 1) sheet.deleteRow(startRow);
+    else sheet.deleteRows(startRow, run);
+    result.deleted += run;
+    j += run;
   }
 }
 
