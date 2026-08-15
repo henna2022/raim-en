@@ -33,16 +33,23 @@
     <% if (code) { %><br>Your reservation code is <strong><%= code %></strong> — save it to check your booking later.<% } %></div>
   <% } %>
   <% if (cancelled) { %>
-    <div class="status-banner st-cancelled">Your reservation has been cancelled. Thank you for letting us know.</div>
+    <div class="status-banner st-cancelled">Your reservation has been cancelled. Thank you for letting us know.
+    <br><span style="font-weight:normal;font-size:13px;">To see the full details of the cancelled booking, enter the
+    email you used below.</span></div>
   <% } %>
 
   <div class="panel">
     <h2 style="font-size:18px;margin:0 0 14px;">Find my booking</h2>
-    <form method="GET" action="/booking">
+    <%# 조회 폼은 POST다 — GET이면 코드·이메일이 쿼리스트링으로 nginx 접근 로그와
+        브라우저 방문 기록에 남는다(PIPA, src/routes/public.js 참조). %>
+    <form method="POST" action="/booking">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
       <label class="field" for="code">Reservation code</label>
       <input type="text" id="code" name="code" placeholder="RAIM-XXXXXX" value="<%= code %>" required>
-      <label class="field" for="email">Email used for the booking</label>
-      <input type="email" id="email" name="email" value="<%= email %>" required>
+      <label class="field" for="email">Email used for the booking <span style="font-weight:normal;color:#8a93a8;">— optional</span></label>
+      <input type="email" id="email" name="email" value="<%= email %>">
+      <p style="font-size:13px;color:#8a93a8;margin:8px 0 0;">The code alone shows your status. Add your email to see
+      the full booking or to cancel it.</p>
       <button class="btn btn-primary" type="submit" style="margin-top:16px;">Check status</button>
     </form>
     <% if (error) { %><div class="error-box" style="margin-top:16px;"><%= error %></div><% } %>
@@ -58,7 +65,9 @@
         <% if (r.status === 'pending') { %> — staff are reviewing your request; you'll get an email once it's decided.<% } %>
         <% if (r.status === 'waitlisted') { %> — the session is currently full. If seats free up, we'll email you a confirmation automatically.<% } %>
         <% if (r.status === 'confirmed') { %> — see you at the museum!<% } %>
-        <% if (r.status === 'declined') { %><%= r.decline_reason ? ' — ' + r.decline_reason : '' %><% } %>
+        <%# 거절 사유는 직원이 자유롭게 적는 칸이라 개인정보가 섞일 수 있다 —
+            이메일로 본인 확인이 된 보기에서만 내보낸다. %>
+        <% if (r.status === 'declined' && !masked) { %><%= r.decline_reason ? ' — ' + r.decline_reason : '' %><% } %>
       </div>
       <table class="kv">
         <tr><td>Code</td><td class="code-big"><%= r.code %></td></tr>
@@ -67,10 +76,15 @@
           <% if (r.language === 'en') { %><span class="badge english">ENGLISH</span><% } else { %><span class="badge korean">KOREAN</span><% } %>
         </td></tr>
         <tr><td>Date &amp; time</td><td><%= r.visit_date %>, <%= r.start_time %>–<%= r.end_time %></td></tr>
-        <tr><td>Name</td><td><%= r.name %></td></tr>
+        <tr><td>Name</td><td><%= masked ? maskName(r.name) : r.name %></td></tr>
         <tr><td>Party size</td><td><%= r.party_size %></td></tr>
       </table>
-      <% if (['pending','confirmed','waitlisted'].includes(r.status)) { %>
+      <% if (masked) { %>
+        <p style="font-size:13px;color:#8a93a8;margin-top:14px;">Some details are hidden because you looked this up
+        with the reservation code only. Enter the email address used for the booking above to see everything
+        <% if (['pending','confirmed','waitlisted'].includes(r.status)) { %>or to cancel<% } %>.</p>
+      <% } %>
+      <% if (!masked && ['pending','confirmed','waitlisted'].includes(r.status)) { %>
         <form method="POST" action="/booking/cancel" style="margin-top:20px;"
               onsubmit="return confirm('<%= r.status === 'waitlisted' ? 'Leave the waitlist?' : 'Cancel this reservation?' %>');">
           <input type="hidden" name="_csrf" value="<%= csrf %>">

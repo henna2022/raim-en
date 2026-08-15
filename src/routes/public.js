@@ -3,7 +3,7 @@ const express = require('express');
 const { db } = require('../db');
 const {
   isValidDateStr, todayStr, addDays, closureInfo, sessionsForDate, genCode,
-  getReservationByCode, STATUS_BADGE, getSettings, getEnglishTours,
+  getReservationByCode, maskName, STATUS_BADGE, getSettings, getEnglishTours,
 } = require('../helpers');
 const mailer = require('../mailer');
 const countries = require('../countries');
@@ -159,20 +159,59 @@ router.post('/reserve', reserveLimiter, async (req, res) => {
 });
 
 // ---------- booking status / cancel ----------
-router.get('/booking', bookingLimiter, (req, res) => {
-  const code = String(req.query.code || '').trim().toUpperCase();
-  const email = String(req.query.email || '').trim().toLowerCase();
+// 조회는 두 단계다:
+//  ① 예약번호만 → 가린 보기. 상태·날짜·회차·인원만 보이고 이름은 첫 글자만,
+//     이메일과 거절 사유는 아예 나가지 않는다. 번호를 주운 사람이 신청자를
+//     특정하거나 연락처를 얻을 수 없어야 한다(PIPA).
+//  ② 예약번호 + 이메일 일치 → 전체 보기. 취소도 여기서만 된다.
+// 번호는 맞는데 이메일이 틀리면 가린 보기로 흘리지 않고 "찾을 수 없음"으로 막는다 —
+// 이메일을 대입해 가며 맞는 주소를 찾아내는 확인 공격을 막기 위해서다.
+// GET·POST가 같은 규칙을 타야 하므로 조회와 렌더를 한곳에 모은다.
+function renderBookingLookup(res, { code, email, isNew, cancelled }) {
   let reservation = null;
+  let masked = false;
   let error = null;
-  if (code && email) {
+  if (code) {
     const r = getReservationByCode(code);
-    if (r && r.email === email) reservation = r;
-    else error = 'No booking found with that code and email.';
+    if (!r) {
+      error = email ? 'No booking found with that code and email.' : 'No booking found with that reservation code.';
+    } else if (email) {
+      if (r.email === email) reservation = r;
+      else error = 'No booking found with that code and email.';
+    } else {
+      reservation = r;
+      masked = true;
+    }
   }
   res.render('booking', {
-    settings: getSettings(), code, email, reservation, error,
-    isNew: req.query.new === '1', cancelled: req.query.cancelled === '1',
-    STATUS_BADGE,
+    settings: getSettings(), code, email, reservation, masked, error,
+    isNew, cancelled,
+    STATUS_BADGE, maskName,
+  });
+}
+
+// GET은 코드만 담긴 링크용이다 — 신청 직후·취소 후 리다이렉트가 여기로 온다.
+// email 파라미터는 UI가 더 이상 만들지 않지만(조회 폼은 POST로 바뀌었다),
+// 예전에 북마크된 URL을 위해 계속 받아 준다 — 그런 URL이 여기까지 왔다면
+// 로그와 방문 기록에는 이미 남은 뒤라, 받아 줘도 새로 새는 것은 없다.
+router.get('/booking', bookingLimiter, (req, res) => {
+  renderBookingLookup(res, {
+    code: String(req.query.code || '').trim().toUpperCase(),
+    email: String(req.query.email || '').trim().toLowerCase(),
+    isNew: req.query.new === '1',
+    cancelled: req.query.cancelled === '1',
+  });
+});
+
+// 이메일이 든 조회는 POST 본문으로 받는다 — GET이면 쿼리스트링에 실려 nginx
+// 접근 로그와 브라우저 방문 기록에 남는다(위 PIPA 주석 참조). 리다이렉트로
+// 돌리면 이메일이 다시 URL에 실리므로, 결과를 여기서 바로 그린다.
+router.post('/booking', bookingLimiter, (req, res) => {
+  renderBookingLookup(res, {
+    code: String((req.body && req.body.code) || '').trim().toUpperCase(),
+    email: String((req.body && req.body.email) || '').trim().toLowerCase(),
+    isNew: false,
+    cancelled: false,
   });
 });
 
@@ -180,27 +219,38 @@ router.post('/booking/cancel', cancelLimiter, async (req, res) => {
   const code = String(req.body.code || '').trim().toUpperCase();
   const email = String(req.body.email || '').trim().toLowerCase();
   const r = getReservationByCode(code);
+  let didCancel = false;
   if (r && r.email === email && ['pending', 'confirmed', 'waitlisted'].includes(r.status)) {
     // A confirmed reservation has seats blocked in the yeyak admin — flag them for release.
     const needsRelease = r.status === 'confirmed' ? 1 : 0;
-    db.prepare(`UPDATE reservations SET status='cancelled', release_needed=?, decided_at=datetime('now'), decided_by='visitor' WHERE id=?`)
+    // WHERE에 상태 조건을 다시 건다 — 위에서 읽은 뒤 직원이 먼저 처리하는 등
+    // 상태가 바뀌었으면 아무것도 덮어쓰지 않고, 메일도 보내지 않는다.
+    const info = db.prepare(`UPDATE reservations SET status='cancelled', release_needed=?, decided_at=datetime('now'), decided_by='visitor'
+                             WHERE id=? AND status IN ('pending','confirmed','waitlisted')`)
       .run(needsRelease, r.id);
-    const updated = getReservationByCode(code);
-    sheets.nudge();
-    await mailer.sendMail(updated.email, `[Seoul RAIM] Reservation cancelled — ${updated.code}`, mailer.cancelledEmail(updated));
-    if (needsRelease) {
-      // Freed-but-still-blocked seats should go to waitlisted requests of the
-      // same session first — tell staff how many candidates there are.
-      const waitlistCount = db.prepare(
-        `SELECT COUNT(*) AS c FROM reservations WHERE status = 'waitlisted' AND visit_date = ? AND slot_id = ?`
-      ).get(updated.visit_date, updated.slot_id).c;
-      await mailer.notifyStaff(
-        `[RAIM] 확정 예약 취소 — yeyak 해제 필요 ${updated.code} (${updated.visit_date} ${updated.start_time})`,
-        mailer.staffReleaseEmail(updated, waitlistCount)
-      );
+    didCancel = info.changes === 1;
+    if (didCancel) {
+      const updated = getReservationByCode(code);
+      sheets.nudge();
+      await mailer.sendMail(updated.email, `[Seoul RAIM] Reservation cancelled — ${updated.code}`, mailer.cancelledEmail(updated));
+      if (needsRelease) {
+        // Freed-but-still-blocked seats should go to waitlisted requests of the
+        // same session first — tell staff how many candidates there are.
+        const waitlistCount = db.prepare(
+          `SELECT COUNT(*) AS c FROM reservations WHERE status = 'waitlisted' AND visit_date = ? AND slot_id = ?`
+        ).get(updated.visit_date, updated.slot_id).c;
+        await mailer.notifyStaff(
+          `[RAIM] 확정 예약 취소 — yeyak 해제 필요 ${updated.code} (${updated.visit_date} ${updated.start_time})`,
+          mailer.staffReleaseEmail(updated, waitlistCount)
+        );
+      }
     }
   }
-  res.redirect(`/booking?code=${encodeURIComponent(code)}&email=${encodeURIComponent(email)}&cancelled=1`);
+  // 이메일은 리다이렉트 URL에 싣지 않는다 — 코드만으로 가린 보기에 내려주면
+  // 상태 줄(Cancelled)과 배너로 확인은 충분하다(위 PIPA 주석 참조). cancelled=1은
+  // 실제로 UPDATE가 실행됐을 때만 붙인다 — 이메일이 틀렸거나 상태가 이미
+  // 바뀐 경우에 "취소됨" 배너를 보여주면 거짓 확인이 된다.
+  res.redirect(`/booking?code=${encodeURIComponent(code)}${didCancel ? '&cancelled=1' : ''}`);
 });
 
 module.exports = router;

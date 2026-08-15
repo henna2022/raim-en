@@ -201,6 +201,21 @@ function getReservationByCode(code) {
     FROM reservations r JOIN slots s ON s.id = r.slot_id WHERE r.code = ?`).get(code);
 }
 
+// 예약번호만으로 조회했을 때 보여줄 이름. 본인이 자기 예약임을 알아보기에는
+// 충분하되, 번호를 주웠거나 어깨너머로 본 사람이 신청자를 특정하지는 못하게
+// 이름 전체의 첫 글자 하나 + '•••' 한 덩어리로 가린다. 낱말별로 가리면 낱말
+// 수와 각 낱말의 첫 글자가 그대로 드러나는데, '이 수 민'·'李 明'처럼 띄어 쓴
+// 한글·한자 이름은 그게 이름 전부다. 한 덩어리로 고정하면 낱말 수도 이름
+// 길이도 새지 않는다. 이메일은 아예 내보내지 않는다(PIPA).
+function maskName(name) {
+  const trimmed = String(name == null ? '' : name).trim();
+  if (!trimmed) return '';
+  // 첫 글자는 코드 포인트 단위로 잘라야 한다. trimmed[0]은 UTF-16 단위라 '𠮷田'
+  // 같은 이름에서 상위 서로게이트만 남고, UTF-8로 못 옮겨 브라우저에 U+FFFD(�)로
+  // 뜬다 — 본인이 알아보라고 남긴 글자가 깨져 버린다.
+  return [...trimmed][0] + '•••';
+}
+
 const STATUS_BADGE = {
   pending: ['Pending review', 'badge-pending'],
   waitlisted: ['Waitlisted', 'badge-waitlisted'],
@@ -214,5 +229,5 @@ const STATUS_BADGE = {
 module.exports = {
   DATE_RE, SLA_HOURS, isValidDateStr, todayStr, nowHM, weekdayOf, addDays,
   closureInfo, sessionsForDate, sessionOrdinal, slotRunsOn, genCode, getEnglishTours,
-  getReservation, getReservationByCode, STATUS_BADGE, getSettings,
+  getReservation, getReservationByCode, maskName, STATUS_BADGE, getSettings,
 };
