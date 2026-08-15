@@ -152,7 +152,7 @@ test('SH1c: doGet 같은 응답(쓰기 건수 없음)은 성공으로 취급하�
   assert.equal(syncFlag(r.code), 1);
 });
 
-test('SH2: 확정 처리하면 같은 코드로 상태가 갱신되어 다시 전송된다', async () => {
+test('SH2: 승인 처리하면 같은 코드로 상태가 갱신되어 다시 전송된다', async () => {
   mock.mode = 'ok';
   const r = await book({ email: uniqueEmail() });
   const id = withDb(ctx.dataDir, (db) => db.prepare('SELECT id FROM reservations WHERE code = ?').get(r.code).id);
@@ -160,8 +160,10 @@ test('SH2: 확정 처리하면 같은 코드로 상태가 갱신되어 다시 �
   assert.equal(res.status, 302);
   await sheets.syncPending();
   const sent = rowsSentFor(r.code);
-  assert.equal(sent.length, 2, '접수 1회 + 확정 1회');
-  assert.equal(sent[1].status, '확정');
+  assert.equal(sent.length, 2, '접수 1회 + 승인 1회');
+  // '승인'은 시트 드롭다운에서 직원이 고르는 값과 같은 문자열이어야 한다 —
+  // 다르면 확정된 예약이 드롭다운 목록 밖 값으로 표시된다(src/sheets.js STATUS_LABEL).
+  assert.equal(sent[1].status, '승인');
   assert.equal(sent[1].decided_by, 'admin');
 });
 

@@ -23,15 +23,29 @@ const BATCH = 50;
 const enabled = !!(WEBHOOK_URL && WEBHOOK_SECRET);
 
 const TOUR_SHORT = { permanent: '상설', special: '기획' };
-const STATUS_LABEL = {
+// 시트 '상태' 열에 찍히는 한국어 라벨. 앞의 세 개는 직원이 시트 드롭다운에서 직접
+// 고르는 값이기도 하므로(SHEET_ACTIONS), 라벨을 바꾸면 드롭다운 목록과 되돌리기
+// 로직이 함께 어긋난다 — scripts/apps-script/Code.gs의 STATUS_CHOICES도 같이 고칠 것.
+// 프로토타입 없는 객체 — 사유는 src/decisions.js의 TRANSITIONS 주석 참고.
+// 이 표들은 시트 셀에 사람이 타이핑한 문자열로 조회된다.
+const STATUS_LABEL = Object.assign(Object.create(null), {
   pending: '대기(검토중)',
-  waitlisted: '대기자',
-  confirmed: '확정',
+  confirmed: '승인',
   declined: '거절',
+  waitlisted: '대기자',
   cancelled: '취소',
   attended: '방문완료',
   no_show: '노쇼',
-};
+});
+
+// 시트 드롭다운에서 고른 값 → 앱의 상태 전이 액션(src/decisions.js TRANSITIONS).
+// 직원이 시트에서 내리는 판단은 이 셋뿐이고, 나머지 상태(대기자·취소·방문완료·노쇼)는
+// 앱이 쓰기만 한다 — 그래서 드롭다운 목록에도 넣지 않는다.
+const SHEET_ACTIONS = Object.assign(Object.create(null), {
+  '승인': 'confirm',
+  '거절': 'decline',
+  '대기(검토중)': 'reopen',
+});
 
 // 예약 행(reservations JOIN slots) → 시트 한 줄.
 // 요청사항(자유입력)은 시트로 보내지 않는다 — 휠체어·알레르기 같은 건강 정보가
@@ -207,5 +221,5 @@ function deletesPending() {
 
 module.exports = {
   enabled, nudge, syncPending, queueDeletes, flushDeletes,
-  pendingCount, deletesPending, toRow, STATUS_LABEL,
+  pendingCount, deletesPending, toRow, STATUS_LABEL, SHEET_ACTIONS,
 };

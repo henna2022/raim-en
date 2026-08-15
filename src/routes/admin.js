@@ -7,6 +7,7 @@ const {
 const holidays = require('../holidays');
 const mailer = require('../mailer');
 const sheets = require('../sheets');
+const { TRANSITIONS, applyDecision } = require('../decisions');
 const { rateLimit } = require('../ratelimit');
 
 const router = express.Router();
@@ -294,41 +295,28 @@ router.post('/reservations/batch-confirm', async (req, res) => {
     r.visit_date === rows[0].visit_date && r.slot_id === rows[0].slot_id);
   if (!sameSession) return fail('Batch confirm only works within a single session. Please reload the dashboard.');
 
-  // Guarded UPDATE (status='pending' in the WHERE) so a row that changed
-  // between page render and submit is skipped, never double-confirmed.
-  // release_needed is cleared: a confirmed row means its yeyak seats are
-  // blocked intentionally, so it must not linger in the release queue (a
-  // cancel→reopen→re-confirm chain would otherwise leave the flag set and
-  // invite staff to free a confirmed party's seats).
-  const update = db.prepare(`UPDATE reservations SET status='confirmed', release_needed=0, decided_at=datetime('now'), decided_by=? WHERE id=? AND status='pending'`);
+  // applyDecision's UPDATE carries the observed status in its WHERE, so a row
+  // that changed between page render and submit is skipped, never
+  // double-confirmed. The extra `status === 'pending'` gate keeps batch confirm
+  // to what the dashboard's pending groups actually offer — promoting a
+  // waitlisted request stays a deliberate, one-at-a-time action.
   let confirmed = 0;
   let emailFailed = 0;
   for (const r of rows) {
-    if (update.run(req.session.staff.username, r.id).changes !== 1) continue;
+    if (r.status !== 'pending') continue;
+    const result = await applyDecision(r, 'confirm', { actor: req.session.staff.username });
+    if (!result.applied) continue;
     confirmed += 1;
-    const updated = getReservation(r.id);
-    const ics = mailer.icsForReservation(updated);
-    const result = await mailer.sendMail(
-      updated.email, `[Seoul RAIM] Reservation confirmed — ${updated.code}`, mailer.confirmedEmail(updated),
-      [{ filename: 'raim-visit.ics', content: ics, contentType: 'text/calendar' }]
-    );
     // Without SMTP everything lands in the outbox by design — only count
     // failures when real delivery was attempted, so the flash can be honest.
-    if (mailer.smtpConfigured && !result.sent) emailFailed += 1;
+    if (mailer.smtpConfigured && !result.email.sent) emailFailed += 1;
   }
   res.redirect(`/admin?confirmed=${confirmed}&skipped=${rows.length - confirmed}&emailfail=${emailFailed}`);
 });
 
-const TRANSITIONS = {
-  confirm: { from: ['pending', 'waitlisted'], to: 'confirmed' },
-  waitlist: { from: ['pending'], to: 'waitlisted' },
-  decline: { from: ['pending', 'waitlisted'], to: 'declined' },
-  cancel: { from: ['pending', 'confirmed', 'waitlisted'], to: 'cancelled' },
-  attended: { from: ['confirmed'], to: 'attended' },
-  no_show: { from: ['confirmed'], to: 'no_show' },
-  reopen: { from: ['declined', 'cancelled', 'no_show', 'attended', 'waitlisted'], to: 'pending' },
-};
-
+// 전이 규칙과 메일 발송은 src/decisions.js에 있다 — Google 시트 드롭다운도 같은
+// 규칙을 써야 하기 때문. 여기 남은 것은 관리자 화면에만 있는 절차(yeyak 차단 확인
+// 체크박스, 매진 표시)와 리다이렉트뿐이다.
 router.post('/reservations/:id/:action', async (req, res) => {
   const r = getReservation(Number(req.params.id));
   const t = TRANSITIONS[req.params.action];
@@ -342,16 +330,14 @@ router.post('/reservations/:id/:action', async (req, res) => {
     });
   }
   const declineReason = String(req.body.decline_reason || '').trim().slice(0, 300);
-  db.prepare(`UPDATE reservations SET status=?, decline_reason=?, decided_at=datetime('now'), decided_by=? WHERE id=?`)
-    .run(t.to, req.params.action === 'decline' ? declineReason : r.decline_reason, req.session.staff.username, r.id);
-  if (req.params.action === 'cancel' && r.status === 'confirmed') {
-    // seats were blocked in yeyak — track the release until staff mark it done
-    db.prepare('UPDATE reservations SET release_needed=1 WHERE id=?').run(r.id);
-  }
-  if (req.params.action === 'confirm') {
-    // confirmed = seats blocked in yeyak on purpose; a stale release flag from
-    // a cancel→reopen chain must not keep the row in the release queue.
-    db.prepare('UPDATE reservations SET release_needed=0 WHERE id=?').run(r.id);
+  const result = await applyDecision(r, req.params.action, {
+    actor: req.session.staff.username, declineReason,
+  });
+  if (!result.applied) {
+    return res.status(409).render('admin/error', {
+      staff: req.session.staff,
+      message: 'This reservation changed while the page was open. Reload and try again.',
+    });
   }
   if (['decline', 'waitlist'].includes(req.params.action) && req.body.mark_soldout === 'on') {
     // One-click "this session is full": stop the booking form offering this
@@ -359,22 +345,6 @@ router.post('/reservations/:id/:action', async (req, res) => {
     db.prepare(`INSERT INTO soldout (date, slot_id, created_by) VALUES (?,?,?)
                 ON CONFLICT(date, slot_id) DO NOTHING`)
       .run(r.visit_date, r.slot_id, req.session.staff.username);
-  }
-
-  const updated = getReservation(r.id);
-  sheets.nudge();
-  if (req.params.action === 'confirm') {
-    const ics = mailer.icsForReservation(updated);
-    await mailer.sendMail(
-      updated.email, `[Seoul RAIM] Reservation confirmed — ${updated.code}`, mailer.confirmedEmail(updated),
-      [{ filename: 'raim-visit.ics', content: ics, contentType: 'text/calendar' }]
-    );
-  } else if (req.params.action === 'waitlist') {
-    await mailer.sendMail(updated.email, `[Seoul RAIM] You're on the waitlist — ${updated.code}`, mailer.waitlistedEmail(updated));
-  } else if (req.params.action === 'decline') {
-    await mailer.sendMail(updated.email, `[Seoul RAIM] About your request — ${updated.code}`, mailer.declinedEmail(updated));
-  } else if (req.params.action === 'cancel') {
-    await mailer.sendMail(updated.email, `[Seoul RAIM] Reservation cancelled — ${updated.code}`, mailer.cancelledEmail(updated));
   }
   res.redirect(req.get('referer') || '/admin/reservations');
 });

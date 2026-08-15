@@ -29,8 +29,18 @@ Seoul Robot & AI Museum — 외국인 방문자 예약 시스템(`raim-en`) 배�
 | `SMTP_PASS` | 선택 | (미설정) | SMTP 인증 비밀번호 |
 | `SMTP_FROM` | 선택 | 설정값 `contact_email` | 발신자 이메일 주소 |
 | `DATA_DIR` | 선택 | `./data` | SQLite DB 파일 저장 디렉토리 |
+| `SHEETS_WEBHOOK_URL` | 선택 | (미설정) | Apps Script 웹앱 URL. 앱 → 시트 미러용 |
+| `SHEETS_WEBHOOK_SECRET` | 선택 | (미설정) | 위와 짝. Apps Script 스크립트 속성과 동일한 값 |
+| `SHEETS_INBOUND_SECRET` | 선택 | (미설정) | 시트 → 앱(상태 드롭다운)용. 미설정 시 `/api/sheet/status`가 503. **`SHEETS_WEBHOOK_SECRET`과 다른 값을 쓰세요** — 이쪽이 새면 남의 예약을 승인·거절하고 방문객에게 메일까지 보낼 수 있습니다 |
 
 전체 목록은 `.env.example`을 참고하세요.
+
+> **시트 → 앱 방향은 사이트가 인터넷에서 접근 가능해야 동작합니다.** 구글 서버가
+> `https://<도메인>/api/sheet/status`를 직접 호출하기 때문입니다. 앱은 루프백에만
+> 리슨하므로 ⑤의 nginx 설정(TLS 종료 + `proxy_pass`)이 되어 있어야 하고,
+> Apps Script 스크립트 속성 `APP_STATUS_URL`에 그 공개 주소를 넣습니다.
+> 사내망·localhost 전용 배포에서는 시트 미러(①)만 동작하고 드롭다운 처리(②)는
+> 쓸 수 없습니다 — 그 경우 승인·거절은 관리자 페이지에서 하세요.
 
 ## ③ Docker 배포 절차
 

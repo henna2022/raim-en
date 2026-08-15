@@ -9,8 +9,10 @@
         "src/app.js"
       ],
       "env": {
-        "DATA_DIR": "/private/tmp/claude-501/-Users-henna-Desktop-raim-en/6e691d1f-e6c3-494b-9be1-10a7561a5d68/scratchpad/preview-data"
+        "DATA_DIR": "./data/preview",
+        "SHEETS_INBOUND_SECRET": "demo-inbound-secret-for-local-preview-only"
       },
+      "autoPort": true,
       "port": 4310
     }
   ]

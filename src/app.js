@@ -68,6 +68,13 @@ app.use((req, res, next) => {
 
 app.use(express.urlencoded({ extended: false, limit: '32kb' }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// Google 시트의 상태 드롭다운이 부르는 엔드포인트. 세션과 CSRF 미들웨어보다 앞에
+// 마운트한다: 구글 서버가 부르는 경로라 브라우저 쿠키도 CSRF 토큰도 있을 수 없고,
+// 공유 비밀값(SHEETS_INBOUND_SECRET)이 인증을 대신한다. 뒤에 두면 CSRF 검사가
+// 모든 요청을 403으로 막아 기능이 통째로 죽는다.
+app.use('/api/sheet', require('./routes/sheet-hook'));
+
 app.use(session({
   name: 'raim.sid',
   store: new SqliteStore(),
