@@ -9,6 +9,15 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 // morning digest email.
 const SLA_HOURS = 48;
 
+// 데모 시드(scripts/demo-seed.js)가 만든 행을 식별하는 이메일 도메인.
+// RFC 2606이 문서·예시용으로 영구 예약한 도메인이라 실제로 배달되지 않는다 —
+// 이 주소로 가는 메일·시트 내보내기·다이제스트 집계는 전부 부작용일 뿐이다.
+// 부작용을 내는 스케줄 작업(대기자 자동거절·다이제스트·시트 미러)이 이 행을
+// 건너뛰게 해서, 데모 데이터가 실서비스처럼 새어 나가지 않게 한다.
+const DEMO_EMAIL_DOMAIN = 'demo.example';
+// 우리가 만든 고정 리터럴만 넣는다(사용자 입력 아님) — SQL 조각으로 안전하다.
+const NOT_DEMO_SQL = (alias) => `${alias ? alias + '.' : ''}email NOT LIKE '%@${DEMO_EMAIL_DOMAIN}'`;
+
 // True only for real calendar dates — DATE_RE alone accepts e.g. 2026-13-99.
 function isValidDateStr(s) {
   if (!DATE_RE.test(s)) return false;
@@ -227,7 +236,8 @@ const STATUS_BADGE = {
 };
 
 module.exports = {
-  DATE_RE, SLA_HOURS, isValidDateStr, todayStr, nowHM, weekdayOf, addDays,
+  DATE_RE, SLA_HOURS, DEMO_EMAIL_DOMAIN, NOT_DEMO_SQL,
+  isValidDateStr, todayStr, nowHM, weekdayOf, addDays,
   closureInfo, sessionsForDate, sessionOrdinal, slotRunsOn, genCode, getEnglishTours,
   getReservation, getReservationByCode, maskName, STATUS_BADGE, getSettings,
 };

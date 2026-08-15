@@ -1,6 +1,6 @@
 'use strict';
 const { db, getSettings, setSetting } = require('./db');
-const { todayStr, addDays, nowHM, SLA_HOURS } = require('./helpers');
+const { todayStr, addDays, nowHM, SLA_HOURS, NOT_DEMO_SQL } = require('./helpers');
 const mailer = require('./mailer');
 const sheets = require('./sheets');
 
@@ -61,10 +61,13 @@ async function sendReminders() {
 // the dashboard/digest while the visitor still sees "Waitlisted" forever.
 async function expireWaitlist() {
   const today = todayStr();
+  // 데모 시드 행은 건너뛴다 — 자동거절하면 방문자에게 실메일이 나가고, 그
+  // 상태 UPDATE가 시트 미러 트리거를 태워 가짜 방문자가 실제 시트로도 새어
+  // 나간다(src/helpers.js DEMO_EMAIL_DOMAIN 주석 참조).
   const rows = db.prepare(`
     SELECT r.*, s.tour_type, s.start_time, s.end_time, s.language
     FROM reservations r JOIN slots s ON s.id = r.slot_id
-    WHERE r.status = 'waitlisted' AND r.visit_date < ?`).all(today);
+    WHERE r.status = 'waitlisted' AND r.visit_date < ? AND ${NOT_DEMO_SQL('r')}`).all(today);
   const update = db.prepare(`
     UPDATE reservations SET status='declined', decline_reason=?, decided_at=datetime('now'), decided_by='system'
     WHERE id=? AND status='waitlisted'`);
@@ -108,25 +111,28 @@ async function sendDailyDigest() {
   if (settings.digest_last_sent === today) return { sent: false, skipped: 'already_sent' };
   if (Number(nowHM().slice(0, 2)) < hour) return { sent: false, skipped: 'not_due' };
 
+  // 모든 집계에서 데모 시드 행을 뺀다 — 아니면 SMTP·담당자 메일이 설정된
+  // 데모 서버에서 실제 직원에게 가짜 신청(SLA 초과 알람 포함)이 실려 나간다
+  // (src/helpers.js DEMO_EMAIL_DOMAIN 주석 참조).
   const pending = db.prepare(`
     SELECT r.*, s.tour_type, s.start_time, s.end_time, s.language,
            CAST((julianday('now') - julianday(r.created_at)) * 24 AS INTEGER) AS age_hours
     FROM reservations r JOIN slots s ON s.id = r.slot_id
-    WHERE r.status = 'pending'
+    WHERE r.status = 'pending' AND ${NOT_DEMO_SQL('r')}
     ORDER BY r.visit_date, s.start_time, r.created_at`).all();
   const releaseQueue = db.prepare(`
     SELECT r.*, s.start_time, s.end_time,
            (SELECT COUNT(*) FROM reservations w
              WHERE w.status = 'waitlisted' AND w.visit_date = r.visit_date AND w.slot_id = r.slot_id) AS waitlist_count
     FROM reservations r JOIN slots s ON s.id = r.slot_id
-    WHERE r.release_needed = 1 ORDER BY r.decided_at`).all();
+    WHERE r.release_needed = 1 AND ${NOT_DEMO_SQL('r')} ORDER BY r.decided_at`).all();
   const todaysCount = db.prepare(`
     SELECT COUNT(*) AS c FROM reservations
-    WHERE visit_date = ? AND status IN ('confirmed','attended')`).get(today).c;
+    WHERE visit_date = ? AND status IN ('confirmed','attended') AND ${NOT_DEMO_SQL('')}`).get(today).c;
   const waitlist = db.prepare(`
     SELECT r.*, s.tour_type, s.start_time, s.end_time, s.language
     FROM reservations r JOIN slots s ON s.id = r.slot_id
-    WHERE r.status = 'waitlisted' AND r.visit_date >= ?
+    WHERE r.status = 'waitlisted' AND r.visit_date >= ? AND ${NOT_DEMO_SQL('r')}
     ORDER BY r.visit_date, s.start_time, r.created_at`).all(today);
 
   // Waitlisted rows are actionable too (time-critical: promote or decline

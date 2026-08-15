@@ -589,12 +589,28 @@ router.post('/settings', requireAdmin, (req, res) => {
 // ---------- email outbox ----------
 router.get('/emails', (req, res) => {
   const emails = db.prepare('SELECT id, to_addr, subject, sent, error, created_at FROM email_log ORDER BY id DESC LIMIT 200').all();
-  res.render('admin/emails', { staff: req.session.staff, emails, smtpConfigured: mailer.smtpConfigured });
+  res.render('admin/emails', {
+    staff: req.session.staff, emails, smtpConfigured: mailer.smtpConfigured,
+    resent: req.query.resent === '1', resendOk: req.query.ok === '1',
+  });
 });
 router.get('/emails/:id', (req, res) => {
   const row = db.prepare('SELECT html FROM email_log WHERE id = ?').get(Number(req.params.id));
   if (!row) return res.status(404).send('Not found');
   res.send(row.html);
+});
+// 재발송 — 저장된 스냅샷을 그대로 다시 보낸다. sendMail을 거치므로 새 email_log
+// 행이 생겨 시도 이력이 남는다. 두 가지를 알고 쓰는 버튼이다:
+//  1) 스냅샷에는 첨부가 없다 — 확정 메일을 재발송해도 캘린더(.ics)는 빠진다.
+//     본문에 방문 정보가 다 있어 안내로는 충분하다.
+//  2) 예약 상태가 그사이 바뀌었을 수 있다(확정 메일인데 지금은 취소된 예약 등).
+//     그래서 버튼 옆 Preview로 내용을 확인하고 보내는 흐름을 전제로 한다.
+router.post('/emails/:id/resend', async (req, res) => {
+  const row = db.prepare('SELECT to_addr, subject, html FROM email_log WHERE id = ?').get(Number(req.params.id));
+  if (!row) return res.status(404).send('Not found');
+  const result = await mailer.sendMail(row.to_addr, row.subject, row.html);
+  // 주소는 URL에 싣지 않는다 — 결과는 목록 맨 위의 새 행으로 확인한다.
+  res.redirect(`/admin/emails?resent=1&ok=${result.sent ? 1 : 0}`);
 });
 
 module.exports = router;

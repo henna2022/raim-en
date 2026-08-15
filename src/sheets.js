@@ -10,7 +10,7 @@
 //     추가하는 걸 잊어도 동기화 루프가 알아서 따라잡는다.
 //  3) 보존기한을 시트까지 적용한다 — 앱에서 파기된 건은 시트에서도 지운다.
 const { db } = require('./db');
-const { sessionOrdinal } = require('./helpers');
+const { sessionOrdinal, NOT_DEMO_SQL } = require('./helpers');
 
 const WEBHOOK_URL = (process.env.SHEETS_WEBHOOK_URL || '').trim();
 const WEBHOOK_SECRET = process.env.SHEETS_WEBHOOK_SECRET || '';
@@ -118,7 +118,7 @@ function markSynced(ids) {
 
 function pendingCount() {
   if (!enabled) return 0;
-  return db.prepare('SELECT COUNT(*) AS c FROM reservations WHERE sheet_synced = 0').get().c;
+  return db.prepare(`SELECT COUNT(*) AS c FROM reservations WHERE sheet_synced = 0 AND ${NOT_DEMO_SQL('')}`).get().c;
 }
 
 // 요청 경로용 — await 하지 말 것. 실패해도 sheet_synced=0으로 남아 루프가 재시도한다.
@@ -140,10 +140,12 @@ function syncPending(limit = BATCH) {
 // 밀린 행을 배치로 전송. 배치가 통째로 실패하면 행 단위로 한 번 더 시도해
 // 문제 있는 한 건이 대기열 전체를 막지 않게 한다.
 async function syncPendingOnce(limit) {
+  // 데모 시드 행은 실제 시트로 내보내지 않는다 — 담당자 계정에만 공유하는
+  // 운영 시트에 가짜 방문자가 섞이면 안 된다(src/helpers.js DEMO_EMAIL_DOMAIN).
   const rows = db.prepare(`
     SELECT r.*, s.tour_type, s.start_time, s.end_time, s.language
     FROM reservations r JOIN slots s ON s.id = r.slot_id
-    WHERE r.sheet_synced = 0 ORDER BY r.id LIMIT ?`).all(limit);
+    WHERE r.sheet_synced = 0 AND ${NOT_DEMO_SQL('r')} ORDER BY r.id LIMIT ?`).all(limit);
   if (rows.length === 0) return { synced: 0, pending: 0 };
 
   let synced = 0;

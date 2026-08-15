@@ -5,6 +5,15 @@
   <div class="flash warn">SMTP not configured — these emails were <strong>not actually sent</strong>.
   They are stored here so you can preview exactly what visitors would receive.</div>
 <% } %>
+<% if (resent) { %>
+  <% if (!smtpConfigured) { %>
+    <div class="flash warn">Resend stored to the outbox (top row) — SMTP is not configured, so nothing was actually delivered.</div>
+  <% } else if (resendOk) { %>
+    <div class="flash ok">Resent — see the new entry at the top.</div>
+  <% } else { %>
+    <div class="flash warn">Resend attempted but delivery <strong>failed</strong> — check the new entry's error at the top.</div>
+  <% } %>
+<% } %>
 
 <div class="panel">
   <% if (emails.length === 0) { %><p class="muted">No emails yet.</p><% } else { %>
@@ -21,7 +30,20 @@
           <% } else { %><span class="badge badge-pending">OUTBOX</span><% } %>
         </td>
         <td class="muted"><%= e.created_at %></td>
-        <td><a class="btn sm gray" href="/admin/emails/<%= e.id %>" target="_blank">Preview</a></td>
+        <td style="white-space:nowrap;">
+          <a class="btn sm gray" href="/admin/emails/<%= e.id %>" target="_blank">Preview</a>
+          <%# 재발송은 저장된 스냅샷 그대로다 — 예약 상태가 그사이 바뀌었을 수 있으니
+              Preview로 내용을 확인하고 누르는 흐름을 전제로 confirm을 한 번 거친다.
+              수신 주소(방문자 입력값)는 confirm 문구에 넣지 않는다 — 인라인 이벤트
+              핸들러의 JS 문자열 안에서는 EJS의 HTML 이스케이프가 통하지 않아(브라우저가
+              속성을 먼저 HTML 디코드한 뒤 JS로 실행) 저장형 XSS가 된다. 주소는 옆
+              TO 칸에 이미 보인다. %>
+          <form method="POST" action="/admin/emails/<%= e.id %>/resend" style="display:inline;"
+                onsubmit="return confirm('Resend this email? It will be sent again exactly as stored.');">
+            <input type="hidden" name="_csrf" value="<%= csrf %>">
+            <button class="btn sm gray" type="submit">Resend</button>
+          </form>
+        </td>
       </tr>
     <% } %>
   </table>
