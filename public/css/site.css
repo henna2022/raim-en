@@ -36,6 +36,39 @@ body:has(.reserve-layout), body:has(.status-card) {
     radial-gradient(820px 560px at -8% 94%, rgba(13,148,136,.09), transparent 62%),
     linear-gradient(180deg, #eef1f7 0%, #e9edf4 100%);
 }
+
+/* ---------- 다크모드 (예약·조회 페이지 한정, OS 설정 자동) ----------
+   랜딩은 컴포넌트별 하드코딩 색이 많아 별도 작업으로 남기고, 사용자가 실제로
+   쓰는 앱 화면(예약 신청·예약 조회)에만 다크 테마를 적용한다. */
+@media (prefers-color-scheme: dark) {
+  body:has(.reserve-layout), body:has(.status-card) {
+    --ink: #e8ecf3; --ink-soft: #aab4c4; --ink-faint: #8b95a6; --line: rgba(255,255,255,.10);
+    --blue: #3b82f6; --blue-dark: #7fa9f6; --blue-soft: rgba(59,130,246,.18);
+    --gray-card-2: rgba(255,255,255,.08);
+    --green-soft: rgba(63,184,131,.16); --green-ink: #56c79a;
+    --teal-soft: rgba(59,182,166,.16); --teal-ink: #4fc9ba;
+    --red-soft: rgba(240,104,94,.16); --red-ink: #f38a82;
+    --amber-soft: rgba(214,160,73,.16); --amber-ink: #e0b463;
+    --glass: rgba(255,255,255,.055); --glass-line: rgba(255,255,255,.10); --glass-edge: rgba(255,255,255,.10);
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 18px 44px -18px rgba(0,0,0,.62);
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.4), 0 8px 20px -14px rgba(0,0,0,.55);
+    color: var(--ink);
+    background:
+      radial-gradient(1050px 620px at 90% 40px, rgba(59,130,246,.16), transparent 60%),
+      radial-gradient(820px 560px at -8% 94%, rgba(13,148,136,.12), transparent 62%),
+      linear-gradient(180deg, #0d1220 0%, #0a0e18 100%);
+  }
+  body:has(.reserve-layout) .nav, body:has(.status-card) .nav { background: rgba(13,18,32,.72); }
+  body:has(.reserve-layout) input, body:has(.reserve-layout) select, body:has(.reserve-layout) textarea,
+  body:has(.status-card) input, body:has(.status-card) select, body:has(.status-card) textarea {
+    background: rgba(255,255,255,.07); color: var(--ink);
+  }
+  body:has(.reserve-layout) .session-opt .box { background: rgba(255,255,255,.05); }
+  body:has(.reserve-layout) .session-opt .box:hover { background: rgba(255,255,255,.10); }
+  /* 상태 배너·조회 표는 대부분 토큰(--*-soft/-ink, --line)을 써서 자동 전환된다.
+     대기자 배너만 하드코딩(보라)이라 여기서 보정. */
+  body:has(.status-card) .st-waitlisted { background: rgba(169,140,230,.18); color: #b79ff0; }
+}
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; scroll-padding-top: 76px; }
 /* Accessibility: skip-to-content link, visible only on keyboard focus */
@@ -308,7 +341,7 @@ footer .cols { display: flex; flex-wrap: wrap; gap: 32px; justify-content: space
 @media (max-width: 900px) { .reserve-layout { grid-template-columns: 1fr; } }
 .panel {
   background: var(--glass); -webkit-backdrop-filter: blur(22px) saturate(140%); backdrop-filter: blur(22px) saturate(140%);
-  border: 1px solid var(--glass-line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 30px 32px;
+  border-radius: var(--radius); box-shadow: var(--shadow); padding: 30px 32px;
 }
 .panel h2 { font-size: 18px; margin: 0 0 16px; display: flex; align-items: center; gap: 10px; letter-spacing: -.3px; }
 .stepnum {
@@ -318,22 +351,23 @@ footer .cols { display: flex; flex-wrap: wrap; gap: 32px; justify-content: space
 label.field { display: block; font-size: 13.5px; font-weight: 700; margin: 14px 0 6px; }
 label.field .opt { color: var(--ink-faint); font-weight: 500; }
 input[type="text"], input[type="email"], input[type="date"], input[type="number"], select, textarea {
-  width: 100%; padding: 12px 14px; border: 1px solid var(--glass-edge); border-radius: 12px;
+  width: 100%; padding: 12px 14px; border: 0; border-radius: 12px;
   font-size: 15px; font-family: inherit; background: rgba(255,255,255,.78); color: var(--ink);
-  transition: border-color .15s, box-shadow .15s;
+  box-shadow: inset 0 0 0 1px var(--glass-edge); transition: box-shadow .15s;
 }
-input:focus, select:focus, textarea:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(49,130,246,.15); }
+input:focus, select:focus, textarea:focus { outline: none; box-shadow: inset 0 0 0 1px var(--blue), 0 0 0 3px var(--blue-soft); }
 .form-hint { font-size: 12.5px; color: var(--ink-faint); margin: 6px 0 0; }
 .sessions { display: grid; gap: 8px; margin-top: 6px; }
 .session-opt { position: relative; }
 .session-opt input { position: absolute; opacity: 0; }
 .session-opt .box {
-  display: flex; align-items: center; gap: 12px; border: 1px solid var(--glass-edge); border-radius: 12px;
-  padding: 13px 16px; cursor: pointer; background: rgba(255,255,255,.6); font-size: 14.5px; transition: border-color .15s, background .15s, box-shadow .15s;
+  display: flex; align-items: center; gap: 12px; border-radius: 12px;
+  padding: 13px 16px; cursor: pointer; background: rgba(255,255,255,.6); font-size: 14.5px;
+  box-shadow: inset 0 0 0 1px var(--glass-edge); transition: background .15s, box-shadow .15s;
 }
 .session-opt .box:hover { background: rgba(255,255,255,.85); }
-.session-opt input:checked + .box { border-color: var(--blue); background: var(--blue-soft); box-shadow: 0 0 0 3px rgba(49,130,246,.12); }
-.session-opt input:focus-visible + .box { box-shadow: 0 0 0 3px rgba(49,130,246,.3); }
+.session-opt input:checked + .box { background: var(--blue-soft); box-shadow: inset 0 0 0 1.5px var(--blue); }
+.session-opt input:focus-visible + .box { box-shadow: inset 0 0 0 1.5px var(--blue), 0 0 0 3px var(--blue-soft); }
 .session-opt input:disabled + .box { opacity: .45; cursor: not-allowed; }
 .session-opt .ord {
   font-size: 12px; font-weight: 800; letter-spacing: .3px; color: var(--blue-dark);
@@ -360,7 +394,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .hp-field { position: absolute; left: -9999px; opacity: 0; height: 0; overflow: hidden; }
 .side-card {
   background: var(--glass); -webkit-backdrop-filter: blur(18px) saturate(140%); backdrop-filter: blur(18px) saturate(140%);
-  border: 1px solid var(--glass-line); border-radius: var(--radius); box-shadow: var(--shadow-sm);
+  border-radius: var(--radius); box-shadow: var(--shadow-sm);
   padding: 22px 24px; margin-bottom: 14px; font-size: 14px; color: var(--ink-soft);
 }
 .side-card h3 { margin: 0 0 8px; font-size: 15px; color: var(--ink); letter-spacing: -.2px; }

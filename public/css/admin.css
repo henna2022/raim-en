@@ -1,45 +1,83 @@
 /* ============================================================
-   RAIM Admin — glassmorphism + minimalism
-   프로스티드 글래스 표면 + 절제된 색 + 넉넉한 여백.
-   색은 '상태 배지'에만 쓰고, 나머지는 잉크/뉴트럴로 조용하게.
+   RAIM Admin — glassmorphism + minimalism (light + dark)
+   표면은 그림자·반투명으로만 구분(불필요한 외곽선 없음), 색은 상태 배지에만.
+   다크모드는 OS 설정(prefers-color-scheme)에 따라 자동 전환.
    ============================================================ */
 :root {
-  --ink: #171c26; --soft: #4a5462; --muted: #8a93a1; --line: rgba(18,32,60,.09);
+  --ink: #171c26; --soft: #4a5462; --muted: #8a93a1; --line: rgba(18,32,60,.08);
   --blue: #2f77f0; --blue-dark: #1b5fd0; --blue-soft: rgba(47,119,240,.10);
-  --navy: #0b1430; --danger: #d7443a; --ok: #17925a; --amber: #a97014; --violet: #7a51d6;
+  --danger: #d7443a; --ok: #17925a; --amber: #a97014; --violet: #7a51d6; --teal: #0c8378;
 
-  /* glass surface tokens — 표면 계층을 하나로 통일 */
-  --glass: rgba(255,255,255,.60);
-  --glass-2: rgba(255,255,255,.44);
-  --glass-line: rgba(255,255,255,.66);
-  --glass-edge: rgba(18,32,60,.07);
-  --shadow: 0 1px 2px rgba(18,32,60,.04), 0 18px 44px -18px rgba(18,32,60,.22);
-  --shadow-sm: 0 1px 2px rgba(18,32,60,.05), 0 8px 20px -14px rgba(18,32,60,.20);
+  /* glass surface — 외곽선 없이 그림자+반투명으로만 */
+  --glass: rgba(255,255,255,.62);
+  --glass-2: rgba(255,255,255,.40);
+  --glass-3: rgba(255,255,255,.72);   /* 입력 등 채움 표면 */
+  --shadow: 0 1px 2px rgba(18,32,60,.04), 0 18px 44px -18px rgba(18,32,60,.20);
+  --shadow-sm: 0 1px 2px rgba(18,32,60,.05), 0 8px 20px -14px rgba(18,32,60,.18);
   --r-card: 20px; --r-ctrl: 12px;
+
+  --page-1: #eef1f7; --page-2: #e9edf4;
+  --blob-1: rgba(47,119,240,.13); --blob-2: rgba(13,148,136,.10);
+  --topbar: rgba(11,20,48,.66); --topbar-line: rgba(255,255,255,.08);
+
+  /* 상태 배지 (bg / fg) */
+  --b-neutral: rgba(18,32,60,.06);
+  --b-pending: rgba(169,112,20,.12); --b-wait: rgba(122,81,214,.13);
+  --b-ok: rgba(23,146,90,.13); --b-danger: rgba(215,68,58,.12);
+  --b-attend: rgba(47,119,240,.12); --b-teal: rgba(13,148,136,.13);
+
+  /* 강조 표면 (해제 대기/일괄 확정 바 등) */
+  --tint-danger: rgba(215,68,58,.06); --tint-danger-line: rgba(215,68,58,.20);
+  --tint-ok: rgba(23,146,90,.06); --tint-ok-line: rgba(23,146,90,.16);
+  --head-fill: rgba(255,255,255,.42); --group-fill: rgba(255,255,255,.34);
 }
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #e8ecf3; --soft: #a9b4c4; --muted: #7e8a9c; --line: rgba(255,255,255,.09);
+    --blue: #3b82f6; --blue-dark: #7fa9f6; --blue-soft: rgba(59,130,246,.18);
+    --danger: #f0685e; --ok: #3fb883; --amber: #d6a049; --violet: #a98ce6; --teal: #3bb6a6;
+
+    --glass: rgba(255,255,255,.055);
+    --glass-2: rgba(255,255,255,.035);
+    --glass-3: rgba(255,255,255,.07);
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 18px 44px -18px rgba(0,0,0,.62);
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.4), 0 8px 20px -14px rgba(0,0,0,.55);
+
+    --page-1: #0d1220; --page-2: #0a0e18;
+    --blob-1: rgba(59,130,246,.16); --blob-2: rgba(13,148,136,.12);
+    --topbar: rgba(9,14,26,.66); --topbar-line: rgba(255,255,255,.07);
+
+    --b-neutral: rgba(255,255,255,.08);
+    --b-pending: rgba(214,160,73,.18); --b-wait: rgba(169,140,230,.20);
+    --b-ok: rgba(63,184,131,.18); --b-danger: rgba(240,104,94,.18);
+    --b-attend: rgba(59,130,246,.20); --b-teal: rgba(59,182,166,.18);
+
+    --tint-danger: rgba(240,104,94,.10); --tint-danger-line: rgba(240,104,94,.28);
+    --tint-ok: rgba(63,184,131,.10); --tint-ok-line: rgba(63,184,131,.24);
+    --head-fill: rgba(255,255,255,.05); --group-fill: rgba(255,255,255,.03);
+  }
+}
+
 * { box-sizing: border-box; }
 body {
   margin: 0; color: var(--ink); min-height: 100vh;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple SD Gothic Neo", Arial, sans-serif;
   font-size: 14.5px; line-height: 1.6; -webkit-font-smoothing: antialiased;
-  /* 앰비언트 배경 — 글래스가 프로스트로 보이도록 은은한 색 번짐을 깐다 */
-  /* 일반(스크롤되는) 배경 — 고정 레이어(background-attachment:fixed 또는 position:fixed)를
-     backdrop-filter 패널과 겹치면 일부 크로미엄에서 스크롤 시 검게 칠해지므로 쓰지 않는다. */
   background:
-    radial-gradient(1200px 700px at 88% 60px, rgba(47,119,240,.13), transparent 60%),
-    radial-gradient(900px 640px at -8% 92%, rgba(13,148,136,.10), transparent 62%),
-    linear-gradient(180deg, #eef1f7 0%, #e9edf4 100%);
+    radial-gradient(1200px 700px at 88% 60px, var(--blob-1), transparent 60%),
+    radial-gradient(900px 640px at -8% 92%, var(--blob-2), transparent 62%),
+    linear-gradient(180deg, var(--page-1) 0%, var(--page-2) 100%);
 }
 a { color: var(--blue-dark); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
-/* ---------- top bar (frosted dark glass) ---------- */
+/* ---------- top bar (frosted glass) ---------- */
 .topbar {
   position: sticky; top: 0; z-index: 50;
   display: flex; align-items: center; gap: 16px; padding: 0 22px; height: 58px;
-  background: rgba(11,20,48,.66);
+  background: var(--topbar);
   -webkit-backdrop-filter: blur(20px) saturate(150%); backdrop-filter: blur(20px) saturate(150%);
-  border-bottom: 1px solid rgba(255,255,255,.08); color: #fff;
+  border-bottom: 1px solid var(--topbar-line); color: #fff;
 }
 .topbar .brand { font-weight: 800; font-size: 14px; letter-spacing: .4px; color: #fff; display: flex; align-items: center; gap: 9px; }
 .topbar .brand::before { content: ""; width: 9px; height: 9px; border-radius: 3px; background: var(--blue); box-shadow: 0 0 12px rgba(47,119,240,.8); }
@@ -47,142 +85,134 @@ a:hover { text-decoration: underline; }
 .topbar nav::-webkit-scrollbar { display: none; }
 .topbar nav a { color: #b6c0d8; padding: 7px 13px; border-radius: 10px; font-size: 13.5px; font-weight: 600; white-space: nowrap; transition: background .15s, color .15s; }
 .topbar nav a:hover { background: rgba(255,255,255,.10); color: #fff; text-decoration: none; }
-.topbar nav a.on { background: rgba(47,119,240,.90); color: #fff; text-decoration: none; }
+.topbar nav a.on { background: rgba(47,119,240,.92); color: #fff; text-decoration: none; }
 .topbar .who { margin-left: auto; font-size: 13px; color: #9aa8c6; display: flex; align-items: center; gap: 12px; white-space: nowrap; }
-.topbar button.linky { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.14); color: #d7deec; border-radius: 9px; padding: 5px 13px; cursor: pointer; font-size: 12.5px; font-family: inherit; transition: background .15s; }
+.topbar button.linky { background: rgba(255,255,255,.06); border: 0; color: #d7deec; border-radius: 9px; padding: 6px 13px; cursor: pointer; font-size: 12.5px; font-family: inherit; transition: background .15s; }
 .topbar button.linky:hover { background: rgba(255,255,255,.14); }
 
 .wrap { max-width: 1080px; margin: 34px auto 56px; padding: 0 22px; }
 h1 { font-size: 23px; margin: 0 0 22px; letter-spacing: -.5px; font-weight: 800; }
 h2 { font-size: 15.5px; margin: 26px 0 12px; letter-spacing: -.2px; font-weight: 700; }
 
-/* ---------- glass surface ---------- */
+/* ---------- glass surface (no outline) ---------- */
 .panel {
   background: var(--glass);
   -webkit-backdrop-filter: blur(22px) saturate(140%); backdrop-filter: blur(22px) saturate(140%);
-  border: 1px solid var(--glass-line); border-radius: var(--r-card);
-  box-shadow: var(--shadow); padding: 26px 28px; margin-bottom: 20px;
+  border-radius: var(--r-card); box-shadow: var(--shadow); padding: 26px 28px; margin-bottom: 20px;
 }
 .panel h2:first-child { margin-top: 0; }
 
 .flash {
   border-radius: var(--r-ctrl); padding: 13px 17px; margin-bottom: 18px; font-weight: 600; font-size: 13.5px;
   background: var(--glass); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
-  border: 1px solid var(--glass-line); border-left: 3px solid var(--muted); box-shadow: var(--shadow-sm);
+  border-left: 3px solid var(--muted); box-shadow: var(--shadow-sm);
 }
 .flash.ok { color: var(--ok); border-left-color: var(--ok); }
 .flash.err { color: var(--danger); border-left-color: var(--danger); }
 .flash.warn { color: var(--amber); border-left-color: var(--amber); }
 
-/* ---------- tables (hairline, quiet) ---------- */
+/* ---------- tables (hairline only, no box outline) ---------- */
 table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 th { text-align: left; color: var(--muted); font-weight: 600; font-size: 11.5px; letter-spacing: .3px; }
 th, td { padding: 11px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
-thead th { border-bottom: 1px solid var(--glass-edge); }
 tbody tr:last-child td { border-bottom: 0; }
-tr:hover td { background: rgba(47,119,240,.045); }
+tr:hover td { background: rgba(47,119,240,.05); }
 
-/* ---------- badges (quiet, one calm style) ---------- */
+/* ---------- badges (one calm style, dot + soft tint) ---------- */
 .badge {
   display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700;
-  padding: 3px 10px 3px 8px; border-radius: 999px; white-space: nowrap; letter-spacing: 0;
-  background: rgba(18,32,60,.06); color: var(--soft);
+  padding: 3px 10px 3px 8px; border-radius: 999px; white-space: nowrap;
+  background: var(--b-neutral); color: var(--soft);
 }
 .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .9; }
-.badge-pending { background: rgba(169,112,20,.11); color: var(--amber); }
-.badge-waitlisted { background: rgba(122,81,214,.12); color: var(--violet); }
-.badge-confirmed { background: rgba(23,146,90,.12); color: var(--ok); }
-.badge-declined { background: rgba(215,68,58,.11); color: var(--danger); }
-.badge-cancelled { background: rgba(18,32,60,.06); color: var(--muted); }
-.badge-attended { background: var(--blue-soft); color: var(--blue-dark); }
-.badge-noshow { background: rgba(215,68,58,.11); color: var(--danger); }
-.badge-en { background: rgba(13,148,136,.12); color: #0c8378; }
-.badge-ko { background: rgba(18,32,60,.06); color: var(--muted); }
-/* 언어 배지는 점 없이 (상태 배지와 구분) */
+.badge-pending { background: var(--b-pending); color: var(--amber); }
+.badge-waitlisted { background: var(--b-wait); color: var(--violet); }
+.badge-confirmed { background: var(--b-ok); color: var(--ok); }
+.badge-declined { background: var(--b-danger); color: var(--danger); }
+.badge-cancelled { background: var(--b-neutral); color: var(--muted); }
+.badge-attended { background: var(--b-attend); color: var(--blue-dark); }
+.badge-noshow { background: var(--b-danger); color: var(--danger); }
+.badge-en { background: var(--b-teal); color: var(--teal); }
+.badge-ko { background: var(--b-neutral); color: var(--muted); }
 .badge-en::before, .badge-ko::before { display: none; }
 
-/* ---------- form controls ---------- */
+/* ---------- form controls (filled, no outline; ring on focus) ---------- */
 input[type="text"], input[type="email"], input[type="password"], input[type="date"], input[type="time"],
 input[type="number"], select, textarea {
-  padding: 10px 13px; border: 1px solid var(--glass-edge); border-radius: var(--r-ctrl); font-size: 14px;
-  font-family: inherit; background: rgba(255,255,255,.72); color: var(--ink); transition: border-color .15s, box-shadow .15s;
+  padding: 10px 13px; border: 0; border-radius: var(--r-ctrl); font-size: 14px;
+  font-family: inherit; background: var(--glass-3); color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--line); transition: box-shadow .15s;
 }
-input:focus, select:focus, textarea:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(47,119,240,.16); }
+input:focus, select:focus, textarea:focus { outline: none; box-shadow: inset 0 0 0 1px var(--blue), 0 0 0 3px var(--blue-soft); }
 label.f { display: block; font-size: 12.5px; font-weight: 600; margin: 12px 0 5px; color: var(--soft); }
 
 .btn {
-  display: inline-flex; align-items: center; justify-content: center; border: 1px solid transparent; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; border: 0; cursor: pointer;
   font-weight: 700; font-size: 13.5px; padding: 10px 18px; border-radius: var(--r-ctrl); font-family: inherit;
-  background: var(--blue); color: #fff; transition: background .15s, transform .06s, box-shadow .15s;
+  background: var(--blue); color: #fff; transition: background .15s, transform .06s;
   box-shadow: 0 6px 16px -8px rgba(47,119,240,.6);
 }
 .btn:hover { background: var(--blue-dark); text-decoration: none; }
 .btn:active { transform: translateY(1px); }
 .btn.sm { padding: 6px 13px; font-size: 12.5px; border-radius: 9px; box-shadow: none; }
-.btn.gray { background: rgba(255,255,255,.66); color: var(--ink); border-color: var(--glass-edge); box-shadow: none; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
-.btn.gray:hover { background: rgba(255,255,255,.92); }
-.btn.green { background: var(--ok); box-shadow: 0 6px 16px -8px rgba(23,146,90,.6); }
-.btn.green:hover { background: #127a4a; }
-.btn.red { background: var(--danger); box-shadow: 0 6px 16px -8px rgba(215,68,58,.55); }
-.btn.red:hover { background: #bd3229; }
-.btn.outline { background: rgba(255,255,255,.5); border: 1px solid var(--glass-edge); color: var(--ink); box-shadow: none; }
-.btn.outline:hover { background: rgba(255,255,255,.85); }
+.btn.gray, .btn.outline { background: var(--glass-3); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.btn.gray:hover, .btn.outline:hover { background: var(--glass); }
+.btn.green { background: var(--ok); box-shadow: 0 6px 16px -8px rgba(23,146,90,.55); }
+.btn.green:hover { filter: brightness(.94); }
+.btn.red { background: var(--danger); box-shadow: 0 6px 16px -8px rgba(215,68,58,.5); }
+.btn.red:hover { filter: brightness(.94); }
 
 .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
 .row > div { display: flex; flex-direction: column; }
 .muted { color: var(--muted); font-size: 12.5px; }
 .right { text-align: right; }
 
-/* ---------- stat tiles (glass) ---------- */
+/* ---------- stat tiles (glass, top-aligned) ---------- */
 .stat {
-  display: inline-block; background: var(--glass); -webkit-backdrop-filter: blur(18px) saturate(140%); backdrop-filter: blur(18px) saturate(140%);
-  border: 1px solid var(--glass-line); border-radius: 18px; box-shadow: var(--shadow-sm);
+  display: inline-block; vertical-align: top;   /* inline-block baseline 정렬로 타일이 내려가던 것 방지 */
+  background: var(--glass); -webkit-backdrop-filter: blur(18px) saturate(140%); backdrop-filter: blur(18px) saturate(140%);
+  border-radius: 18px; box-shadow: var(--shadow-sm);
   padding: 18px 24px; margin-right: 12px; margin-bottom: 12px; min-width: 138px;
 }
 .stat .n { font-size: 27px; font-weight: 800; letter-spacing: -.6px; }
 .stat .l { font-size: 12px; color: var(--muted); margin-top: 3px; }
-.stat.late-stat { background: rgba(215,68,58,.08); border-color: rgba(215,68,58,.22); }
+.stat.late-stat { background: var(--tint-danger); box-shadow: inset 0 0 0 1px var(--tint-danger-line), var(--shadow-sm); }
 .stat.late-stat .n, .stat.late-stat .l { color: var(--danger); }
-tr.late td { background: rgba(215,68,58,.05); }
-tr.late:hover td { background: rgba(215,68,58,.08); }
+tr.late td { background: var(--tint-danger); }
 
-/* ---------- pending groups (batch confirm per session) ---------- */
-/* 상자 속 상자를 줄인다: 그룹은 하프라인 + 얇은 그림자, 내부는 채움 대신 구분선. */
-.res-group {
-  border: 1px solid var(--glass-edge); border-radius: 16px; margin: 14px 0; overflow: hidden;
-  background: rgba(255,255,255,.34); box-shadow: var(--shadow-sm);
-}
-.res-group.late-group { border-color: rgba(215,68,58,.28); }
+/* ---------- pending groups ---------- */
+.res-group { border-radius: 16px; margin: 14px 0; overflow: hidden; background: var(--group-fill); box-shadow: var(--shadow-sm); }
+.res-group.late-group { box-shadow: inset 0 0 0 1px var(--tint-danger-line), var(--shadow-sm); }
 .res-group-head {
   display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
-  background: rgba(255,255,255,.42); border-bottom: 1px solid var(--glass-edge); padding: 12px 16px; font-size: 13.5px;
+  background: var(--head-fill); border-bottom: 1px solid var(--line); padding: 12px 16px; font-size: 13.5px;
 }
-.res-group.late-group .res-group-head { background: rgba(215,68,58,.05); }
+.res-group.late-group .res-group-head { background: var(--tint-danger); }
 .res-group-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12.5px; }
 .res-group table { font-size: 13px; }
 .res-group th, .res-group td { padding: 10px 16px; }
 .res-group th:first-child, .res-group td:first-child { width: 26px; padding-right: 0; }
 .batch-bar {
   display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
-  background: rgba(23,146,90,.06); border-top: 1px solid rgba(23,146,90,.16); padding: 12px 16px;
+  background: var(--tint-ok); border-top: 1px solid var(--tint-ok-line); padding: 12px 16px;
 }
 .batch-attest { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; max-width: 620px; color: var(--soft); }
 .batch-bar button[disabled] { opacity: .4; cursor: not-allowed; box-shadow: none; }
 
-/* inline edit — 채운 색 상자 대신 얇은 좌측 강조선으로 조용하게 */
+/* inline edit — 채운 상자 대신 얇은 좌측 강조선만 */
 details.inline-edit { margin-top: 4px; }
 details.inline-edit summary { cursor: pointer; color: var(--blue-dark); font-size: 12.5px; font-weight: 600; list-style: none; }
 details.inline-edit summary::-webkit-details-marker { display: none; }
 details.inline-edit summary::before { content: "⌵ "; color: var(--muted); }
 .confirm-box, .waitlist-box, .decline-box {
-  background: rgba(255,255,255,.5); border: 1px solid var(--glass-edge); border-left-width: 3px;
+  background: var(--glass-2); border-left: 3px solid var(--muted);
   border-radius: 10px; padding: 11px 13px; margin-top: 7px; font-size: 12.5px; color: var(--soft);
 }
 .confirm-box { border-left-color: var(--ok); }
 .waitlist-box { border-left-color: var(--violet); }
 .decline-box { border-left-color: var(--danger); }
 
-/* ---------- login (glass card centered) ---------- */
+/* ---------- login ---------- */
 .login-wrap { max-width: 384px; margin: 12vh auto; }
 .login-wrap .panel { padding: 34px 32px; }
 .login-wrap .brandmark {
@@ -197,13 +227,13 @@ details.inline-edit summary::before { content: "⌵ "; color: var(--muted); }
 /* ---------- print ---------- */
 @media print {
   .topbar, .noprint { display: none !important; }
-  body { background: #fff; }
+  body { background: #fff; color: #000; }
   .wrap { margin: 0; max-width: none; }
-  .panel { border: 0; padding: 0; box-shadow: none; background: #fff; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .panel { padding: 0; box-shadow: none; background: #fff; -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
 
-/* backdrop-filter 미지원 브라우저: 불투명 흰 표면으로 폴백 */
+/* backdrop-filter 미지원 폴백 */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .panel, .stat, .flash { background: #fff; }
-  .topbar { background: #0b1430; }
+  .panel, .stat, .flash { background: var(--page-1); }
+  @media (prefers-color-scheme: dark) { .panel, .stat, .flash { background: #141a28; } }
 }
