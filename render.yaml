@@ -1,0 +1,61 @@
+# Render Blueprint — 원클릭 호스팅
+# ────────────────────────────────────────────────────────────
+# render.com 로그인 → New + → Blueprint → 이 GitHub 저장소 선택 → Apply.
+# 저장소의 Dockerfile(node:26-slim)을 그대로 빌드해 상시 웹 서비스로 띄운다.
+# node:sqlite가 플래그 없이 도는 Node 26을 Docker가 고정하므로 런타임 버전
+# 문제가 없다.
+#
+# SESSION_SECRET은 Render가 자동 생성한다(generateValue). 나머지 sync:false
+# 항목은 대시보드에서 값을 채운다(비워두면 해당 기능만 꺼진다).
+#
+# 무료(free) 등급 주의:
+#   - 15분간 요청이 없으면 잠들고, 다음 요청에서 30~50초 콜드스타트가 있다.
+#   - 영구 디스크가 없어 재배포/재시작 시 data/ (SQLite)가 초기화된다.
+#     부팅 때 admin 계정·회차·설정은 다시 시드되지만 예약 기록과 변경한
+#     비밀번호는 사라진다 — 시연에는 충분하고, 데이터를 계속 유지하려면
+#     아래 disk 블록을 켜고 유료 인스턴스로 올린다.
+services:
+  - type: web
+    name: raim-en
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free            # 데이터 유지가 필요하면 starter 이상으로 올리고 disk 사용
+    region: singapore     # 한국에서 가장 가까운 무료 리전
+    healthCheckPath: /
+    autoDeploy: true      # master에 push하면 자동 재배포
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0    # 컨테이너는 모든 인터페이스에서 수신해야 한다
+      - key: TRUST_PROXY
+        value: "1"        # Render 프록시 뒤 — secure 쿠키가 동작하려면 필요
+      - key: SESSION_SECRET
+        generateValue: true          # Render가 랜덤 생성 (없으면 production 부팅 거부)
+      - key: BASE_URL
+        sync: false                  # 첫 배포 후 https://<서비스명>.onrender.com 로 채운다 (메일 링크·OG용)
+      # ── SMTP (선택) — 비우면 발송함(Outbox) 모드로 실제 발송 안 함 ──
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      # ── Google 시트 연동 (선택) ──
+      - key: SHEETS_WEBHOOK_URL
+        sync: false
+      - key: SHEETS_WEBHOOK_SECRET
+        sync: false
+      - key: SHEETS_INBOUND_SECRET
+        sync: false
+    # ── 데이터 영구 보존 (유료 인스턴스에서만) ──
+    # 무료 등급은 디스크를 지원하지 않으므로 주석 처리해 둔다. starter 이상으로
+    # 올린 뒤 아래 3줄의 주석을 풀면 예약 기록이 재배포에도 유지된다.
+    # disk:
+    #   name: raim-data
+    #   mountPath: /app/data
+    #   sizeGB: 1

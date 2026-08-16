@@ -1,0 +1,15 @@
+# 빌드 컨텍스트에서 제외 — 이미지에 불필요하거나 비밀/대용량인 것들.
+node_modules
+data
+backups
+.git
+.github
+.claude
+tests
+docs
+*.log
+npm-debug.log*
+.env
+.env.*
+!.env.example
+.DS_Store

@@ -250,3 +250,36 @@ curl -sf -o /dev/null -w '%{http_code}\n' http://127.0.0.1:4310/admin/login
 curl -sf -o /dev/null -w '%{http_code}\n' https://<도메인>/
 curl -sv --max-time 5 http://<공인IP>:4310/    # 연결 실패가 정상 (성공하면 ⑤ 재확인)
 ```
+
+## ⑩ 원클릭 호스팅 (Render)
+
+VPS·nginx 없이 GitHub 저장소만으로 상시 접속 주소를 얻는 가장 빠른 방법입니다.
+저장소의 [`render.yaml`](../render.yaml) 블루프린트가 [`Dockerfile`](../Dockerfile)을
+그대로 빌드해 웹 서비스를 만듭니다. TLS·리버스 프록시·`HOST=0.0.0.0`은 Render가
+처리하므로 ⑤(nginx)는 필요 없습니다.
+
+**절차**
+
+1. [render.com](https://render.com) 로그인 → **New +** → **Blueprint**.
+2. 이 GitHub 저장소(`henna2022/raim-en`)를 선택 → **Apply**.
+   `render.yaml`대로 웹 서비스가 생성되고 `SESSION_SECRET`은 자동 생성됩니다.
+3. 첫 배포가 끝나면 발급된 주소(`https://<서비스명>.onrender.com`)를 확인하고,
+   서비스 **Environment**에서 `BASE_URL`을 그 주소로 설정합니다(메일 링크·OG용).
+   실제 메일 발송이 필요하면 같은 화면에서 `SMTP_*`를 채웁니다(비우면 발송함 모드).
+4. **Logs**에서 첫 부팅 로그의 1회성 `admin` 비밀번호를 저장하고, HTTPS 주소로
+   `/admin`에 로그인해 비밀번호를 바꾸세요(③-2와 동일).
+
+**무료(free) 등급 주의**
+
+- 15분간 요청이 없으면 잠들고 다음 요청에 30~50초 콜드스타트가 있습니다.
+- **영구 디스크가 없어 재배포·재시작 시 `data/`(SQLite)가 초기화**됩니다. 부팅
+  때 admin 계정·회차·설정은 다시 시드되지만, **예약 기록과 바꾼 비밀번호는
+  사라집니다.** 시연에는 충분하며, 데이터를 계속 유지하려면 `render.yaml`의
+  `disk:` 블록 주석을 풀고 **starter 이상 유료 인스턴스**로 올리세요.
+- 무료 등급은 셸이 없어 `npm run demo-seed`를 서버에서 실행할 수 없습니다. 시연
+  데이터가 필요하면 화면에서 직접 예약을 넣거나, 유료 인스턴스의 Shell에서
+  `npm run demo-seed`를 실행하세요.
+
+> 이 `Dockerfile`은 Render 전용이 아니라 표준 컨테이너 이미지이므로 Railway·
+> Fly.io·자체 서버(③ Docker Compose) 등 어디서든 동일하게 배포할 수 있습니다.
+> 데이터 영구 보존이 기본으로 필요하면 볼륨을 붙일 수 있는 이들 쪽이 낫습니다.
