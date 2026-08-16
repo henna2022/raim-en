@@ -6,7 +6,7 @@
       <input type="hidden" name="_csrf" value="<%= csrf %>">
       <label style="display:flex;gap:8px;align-items:flex-start;">
         <input type="checkbox" name="yeyak_blocked" required>
-        <span>이 회차 <strong>좌석 <%= r.party_size %>석</strong>을 서울시 공공서비스예약(yeyak)
+        <span>이 회차 <strong>좌석 <%= r.party_size %>석</strong>을 서울시 공공서비스예약
         관리자 예약에서 차단했습니다.</span>
       </label>
       <button class="btn sm green" type="submit" style="margin-top:8px;">확정 · 방문자 메일</button>
@@ -42,7 +42,7 @@
       <input type="hidden" name="_csrf" value="<%= csrf %>">
       <label style="display:flex;gap:8px;align-items:flex-start;">
         <input type="checkbox" name="yeyak_blocked" required>
-        <span>좌석이 확보됨 — 이 회차에 대해 yeyak 관리자 예약에서 <strong><%= r.party_size %>석이 차단</strong>되어
+        <span>좌석이 확보됨 — 이 회차에 대해 관리자 예약에서 <strong><%= r.party_size %>석이 차단</strong>되어
         있습니다 (취소분을 유지했거나 새로 차단). 좌석이 더 남아 있다면 일정에서 해당 회차의
         매진 표시도 해제하세요.</span>
       </label>

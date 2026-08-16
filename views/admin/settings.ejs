@@ -19,24 +19,24 @@
     <input type="number" name="booking_window_days" value="<%= settings.booking_window_days %>" min="1" max="180">
     <label class="f">방문자에게 표시되는 응답 시간 안내 문구</label>
     <input type="text" name="reply_sla_text" value="<%= settings.reply_sla_text %>" style="width:100%;">
-    <label class="f">직원 알림 이메일 (신규 요청 및 yeyak 오픈 — 비우면 사용 안 함)</label>
+    <label class="f">직원 알림 이메일 (신규 요청 및 예약 오픈 — 비우면 사용 안 함)</label>
     <input type="email" name="staff_notify_email" value="<%= settings.staff_notify_email %>" style="width:100%;">
-    <label class="f">아침 다이제스트 시각 (KST 0–23 — 대기 / SLA 위반 / yeyak 오픈 일일 요약; 비우면 사용 안 함)</label>
+    <label class="f">아침 다이제스트 시각 (KST 0–23 — 대기 / SLA 위반 / 예약 오픈 일일 요약; 비우면 사용 안 함)</label>
     <input type="number" name="digest_hour" value="<%= settings.digest_hour %>" min="0" max="23">
     <label class="f">개인정보 보존기한 (방문일 이후 일수)</label>
     <input type="number" name="retention_days" value="<%= settings.retention_days %>" min="1" max="3650">
     <label class="f">노쇼 기록 보존기한(일)</label>
     <input type="number" name="noshow_retention_days" value="<%= settings.noshow_retention_days %>" min="1" max="3650">
 
-    <h2>yeyak 도우미 링크 (대시보드)</h2>
-    <p class="muted" style="margin:0 0 6px;">각 대기 그룹 옆에 표시됩니다. yeyak은 매달 새로운
+    <h2>예약 도우미 링크 (대시보드)</h2>
+    <p class="muted" style="margin:0 0 6px;">각 대기 그룹 옆에 표시됩니다. 예약 시스템은 매달 새로운
     서비스 페이지를 엽니다 — 새 달의 서비스가 올라오면 두 서비스 URL을 업데이트하세요.
     비워 두면 링크가 숨겨집니다. URL은 <code>https://</code>로 시작해야 합니다.</p>
-    <label class="f">yeyak 예약 URL — 상설전시(이번 달)</label>
+    <label class="f">예약 URL — 상설전시(이번 달)</label>
     <input type="text" name="yeyak_url_permanent" value="<%= settings.yeyak_url_permanent %>" style="width:100%;" placeholder="https://yeyak.seoul.go.kr/web/reservation/selectReservView.do?rsv_svc_id=...">
-    <label class="f">yeyak 예약 URL — 기획전시(이번 달)</label>
+    <label class="f">예약 URL — 기획전시(이번 달)</label>
     <input type="text" name="yeyak_url_special" value="<%= settings.yeyak_url_special %>" style="width:100%;" placeholder="https://yeyak.seoul.go.kr/web/reservation/selectReservView.do?rsv_svc_id=...">
-    <label class="f">yeyak 관리자 URL (관리자시스템 — 선택)</label>
+    <label class="f">예약 관리자 URL (관리자시스템 — 선택)</label>
     <input type="text" name="yeyak_admin_url" value="<%= settings.yeyak_admin_url %>" style="width:100%;" placeholder="https://...">
 
     <br><button class="btn" type="submit" style="margin-top:16px;">설정 저장</button>

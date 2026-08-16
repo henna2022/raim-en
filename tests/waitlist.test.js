@@ -86,7 +86,7 @@ test('W4: cancelling a confirmed booking surfaces waitlist candidates for its se
   assert.equal(row(res2.code).release_needed, 1);
 
   const staffMail = withDb(ctx.dataDir, (db) => db.prepare(
-    `SELECT html FROM email_log WHERE subject LIKE '%yeyak 해제 필요%' ORDER BY id DESC LIMIT 1`).get());
+    `SELECT html FROM email_log WHERE subject LIKE '%예약 해제 필요%' ORDER BY id DESC LIMIT 1`).get());
   assert.match(staffMail.html, /대기자 1명/);
   assert.match(staffMail.html, /승격/);
 

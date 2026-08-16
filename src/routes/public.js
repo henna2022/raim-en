@@ -240,7 +240,7 @@ router.post('/booking/cancel', cancelLimiter, async (req, res) => {
           `SELECT COUNT(*) AS c FROM reservations WHERE status = 'waitlisted' AND visit_date = ? AND slot_id = ?`
         ).get(updated.visit_date, updated.slot_id).c;
         await mailer.notifyStaff(
-          `[RAIM] 확정 예약 취소 — yeyak 해제 필요 ${updated.code} (${updated.visit_date} ${updated.start_time})`,
+          `[RAIM] 확정 예약 취소 — 예약 해제 필요 ${updated.code} (${updated.visit_date} ${updated.start_time})`,
           mailer.staffReleaseEmail(updated, waitlistCount)
         );
       }

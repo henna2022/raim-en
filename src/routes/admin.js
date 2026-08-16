@@ -265,7 +265,7 @@ router.get('/reservations.csv', (req, res) => {
 router.post('/reservations/:id/released', (req, res) => {
   const r = getReservation(Number(req.params.id));
   if (!r || !r.release_needed) {
-    return res.status(400).render('admin/error', { staff: req.session.staff, message: 'yeyak 좌석 해제 대기 상태의 예약이 아닙니다.' });
+    return res.status(400).render('admin/error', { staff: req.session.staff, message: '예약 좌석 해제 대기 상태의 예약이 아닙니다.' });
   }
   db.prepare(`UPDATE reservations SET release_needed=0, released_at=datetime('now'), released_by=? WHERE id=?`)
     .run(req.session.staff.username, r.id);
@@ -282,7 +282,7 @@ router.post('/reservations/:id/released', (req, res) => {
 router.post('/reservations/batch-confirm', async (req, res) => {
   const fail = (message) => res.status(400).render('admin/error', { staff: req.session.staff, message });
   if (req.body.yeyak_blocked !== 'on') {
-    return fail('먼저 서울시 공공서비스예약(yeyak) 관리자 예약에서 좌석을 차단했다는 체크박스를 선택하세요.');
+    return fail('먼저 서울시 공공서비스예약 관리자 예약에서 좌석을 차단했다는 체크박스를 선택하세요.');
   }
   const ids = [...new Set([].concat(req.body.ids || [])
     .map(v => Number.parseInt(v, 10))
@@ -328,7 +328,7 @@ router.post('/reservations/:id/:action', async (req, res) => {
   if (req.params.action === 'confirm' && req.body.yeyak_blocked !== 'on') {
     return res.status(400).render('admin/error', {
       staff: req.session.staff,
-      message: '먼저 서울시 공공서비스예약(yeyak) 관리자 예약에서 좌석을 차단했다는 체크박스를 선택하세요.',
+      message: '먼저 서울시 공공서비스예약 관리자 예약에서 좌석을 차단했다는 체크박스를 선택하세요.',
     });
   }
   const declineReason = String(req.body.decline_reason || '').trim().slice(0, 300);

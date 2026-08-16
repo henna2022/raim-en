@@ -234,13 +234,13 @@ function staffNewRequestEmail(r) {
     <p>외국인 전용 예약 사이트에 새 신청이 접수되었습니다.</p>
     ${staffInfoTable(r)}
     <div style="background:#eef4ff;border-radius:8px;padding:12px 16px;margin-top:16px;font-size:13px;color:#1b64da;">
-      처리 절차: ① 해당 회차 잔여석 확인 → ② 서울시공공서비스예약(yeyak) <strong>관리자 예약으로 ${r.party_size}석 차단</strong>
+      처리 절차: ① 해당 회차 잔여석 확인 → ② 서울시공공서비스예약 <strong>관리자 예약으로 ${r.party_size}석 차단</strong>
       → ③ 관리자 페이지에서 Confirm (확정 메일 자동 발송)
     </div>`);
 }
 
 function staffReleaseEmail(r, waitlistCount = 0) {
-  return staffTemplate('확정 예약 취소 — yeyak 좌석 해제 필요', `
+  return staffTemplate('확정 예약 취소 — 예약 좌석 해제 필요', `
     <p>확정된 예약이 <strong>방문자에 의해 취소</strong>되었습니다.</p>
     ${staffInfoTable(r)}
     ${waitlistCount > 0 ? `
@@ -249,7 +249,7 @@ function staffReleaseEmail(r, waitlistCount = 0) {
       Dashboard의 <strong>Waitlist</strong>에서 승격(Confirm)을 먼저 검토하세요 — 차단해 둔 좌석을 그대로 쓰면 됩니다.
     </div>` : ''}
     <div style="background:#fdeeee;border-radius:8px;padding:12px 16px;margin-top:16px;font-size:13px;color:#d22030;">
-      ${waitlistCount > 0 ? '승격하지 않는 경우에만 ' : ''}yeyak에 차단해 둔 <strong>${r.party_size}석을 해제</strong>해 주세요.
+      ${waitlistCount > 0 ? '승격하지 않는 경우에만 ' : ''}예약에 차단해 둔 <strong>${r.party_size}석을 해제</strong>해 주세요.
       해제 후 관리자 페이지 Dashboard의 <strong>Yeyak release queue</strong>에서 완료 처리하면 목록에서 사라집니다.
     </div>`);
 }
@@ -290,7 +290,7 @@ function digestEmail(data) {
   return staffTemplate('아침 다이제스트', `
     <p style="font-size:15px;">
       대기 <strong>${pending.length}건</strong>${lateCount > 0 ? ` (SLA ${slaHours}시간 초과 <strong style="color:#d22030;">${lateCount}건</strong>)` : ''}
-      · yeyak 해제 대기 <strong>${releaseQueue.length}건</strong>
+      · 예약 해제 대기 <strong>${releaseQueue.length}건</strong>
       ${waitlist.length > 0 ? `· 대기자(waitlist) <strong style="color:#7c3aed;">${waitlist.length}명</strong>` : ''}
       · 오늘 확정 방문 <strong>${todaysCount}건</strong>
     </p>
@@ -298,7 +298,7 @@ function digestEmail(data) {
       <h3 style="font-size:14px;margin:18px 0 6px;">대기 중인 신청</h3>
       <table style="width:100%;border-collapse:collapse;font-size:13px;">${pendingRows}</table>` : ''}
     ${releaseQueue.length > 0 ? `
-      <h3 style="font-size:14px;margin:18px 0 6px;color:#d22030;">yeyak 좌석 해제 대기</h3>
+      <h3 style="font-size:14px;margin:18px 0 6px;color:#d22030;">예약 좌석 해제 대기</h3>
       <table style="width:100%;border-collapse:collapse;font-size:13px;">${releaseRows}</table>` : ''}
     ${waitlist.length > 0 ? `
       <h3 style="font-size:14px;margin:18px 0 6px;color:#7c3aed;">대기자 — 방문일 전에 승격 또는 거절 필요</h3>
