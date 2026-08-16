@@ -283,3 +283,45 @@ VPS·nginx 없이 GitHub 저장소만으로 상시 접속 주소를 얻는 가�
 > 이 `Dockerfile`은 Render 전용이 아니라 표준 컨테이너 이미지이므로 Railway·
 > Fly.io·자체 서버(③ Docker Compose) 등 어디서든 동일하게 배포할 수 있습니다.
 > 데이터 영구 보존이 기본으로 필요하면 볼륨을 붙일 수 있는 이들 쪽이 낫습니다.
+
+## ⑪ 호스팅 (Fly.io) — 데이터 영구 보존
+
+Render 무료 등급과 달리 **영구 볼륨**을 붙일 수 있어 예약 기록이 재배포에도
+유지됩니다. 저장소의 [`fly.toml`](../fly.toml)이 같은 [`Dockerfile`](../Dockerfile)을
+빌드하고 볼륨을 `/app/data`에 마운트합니다. SQLite는 단일 writer이므로 **머신
+1대**로만 운영합니다.
+
+**절차** ([flyctl](https://fly.io/docs/flyctl/install/) 설치 후)
+
+```bash
+# 1) 앱 생성 (이름이 겹치면 다른 이름을 쓰고 fly.toml의 app 값도 맞추세요)
+fly apps create raim-en
+
+# 2) 영구 볼륨 생성 (없으면 머신이 뜨지 않습니다)
+fly volumes create raim_data --size 1 --region nrt
+
+# 3) 필수 비밀값 — 없으면 production 부팅을 거부합니다
+fly secrets set SESSION_SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
+#    (선택) 실제 메일:  fly secrets set SMTP_HOST=... SMTP_USER=... SMTP_PASS=... SMTP_FROM=...
+#    (선택) 시트 연동:  fly secrets set SHEETS_WEBHOOK_URL=... SHEETS_WEBHOOK_SECRET=... SHEETS_INBOUND_SECRET=...
+
+# 4) 배포
+fly deploy
+
+# 5) 발급된 주소(https://raim-en.fly.dev)를 fly.toml [env] BASE_URL에 넣고 다시 배포
+#    (메일 링크·OG용. 웹 페이지는 요청에서 자동 유추되지만 메일은 이 값을 씁니다)
+fly deploy
+
+# 6) 1회성 admin 비밀번호 확인 → HTTPS로 /admin 로그인 후 변경
+fly logs
+```
+
+**참고**
+
+- `min_machines_running = 1` 로 두어 스케줄 작업(개인정보 90일 삭제·방문 전날
+  리마인더·아침 다이제스트)이 계속 돌게 했습니다. 시연용이라 비용을 더 줄이려면
+  `fly.toml`에서 `min_machines_running = 0` (유휴 시 정지)으로 바꾸세요 — 대신
+  정지 중에는 위 스케줄 작업이 수행되지 않습니다.
+- 데이터 백업은 ⑦과 동일하게 볼륨 안 `raim.db`를 대상으로 하되, Fly에서는
+  `fly ssh console` 로 접속해 실행하거나 `fly volumes snapshots` 를 씁니다.
+- 시연 데이터가 필요하면 `fly ssh console -C "npm run demo-seed"` 로 채웁니다.

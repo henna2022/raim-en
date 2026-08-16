@@ -1,0 +1,52 @@
+# Fly.io 배포 설정 — 저장소의 Dockerfile(node:26-slim)을 그대로 빌드한다.
+# Render와 달리 영구 볼륨을 붙일 수 있어 SQLite 데이터가 재배포에도 유지된다.
+# SQLite는 단일 writer이므로 머신 1대로만 운영한다(볼륨도 그 머신에 붙는다).
+#
+# ── 첫 배포 순서 (flyctl 설치 후) ───────────────────────────
+#   1) fly apps create raim-en                         # 이름이 겹치면 다른 이름으로
+#   2) fly volumes create raim_data --size 1 --region nrt
+#   3) fly secrets set SESSION_SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
+#      # SESSION_SECRET 없이는 production 부팅을 거부한다(필수).
+#      # 실제 메일: fly secrets set SMTP_HOST=... SMTP_USER=... SMTP_PASS=... SMTP_FROM=...
+#      # 시트 연동: fly secrets set SHEETS_WEBHOOK_URL=... SHEETS_WEBHOOK_SECRET=... SHEETS_INBOUND_SECRET=...
+#   4) fly deploy
+#   5) 배포 후 주소(https://raim-en.fly.dev)를 아래 [env] BASE_URL에 넣고 다시 fly deploy
+#      (메일 링크·OG용. 웹 페이지는 요청에서 자동 유추되지만 메일은 이 값을 쓴다)
+#   6) fly logs 에서 1회성 admin 비밀번호 확인 → HTTPS로 /admin 로그인 후 변경
+
+app = "raim-en"
+primary_region = "nrt"          # 도쿄 — 한국에서 가장 가까운 리전
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  HOST = "0.0.0.0"              # Fly 프록시가 컨테이너로 라우팅하려면 모든 인터페이스 수신
+  PORT = "4310"                 # 아래 internal_port와 반드시 일치
+  TRUST_PROXY = "1"             # Fly 프록시 뒤 — secure 쿠키가 동작하려면 필요
+  # BASE_URL = "https://raim-en.fly.dev"   # 첫 배포 후 실제 주소로 채우고 재배포
+
+# SQLite 데이터 영구 보존 — 이 볼륨이 없으면 머신이 뜨지 않는다(위 2단계에서 생성).
+[mounts]
+  source = "raim_data"
+  destination = "/app/data"
+
+[http_service]
+  internal_port = 4310
+  force_https = true            # http → https 리다이렉트
+  auto_stop_machines = "stop"   # 유휴 시 정지(비용 절감). 단, 정지 중엔 스케줄
+  auto_start_machines = true    # 작업(개인정보 삭제·리마인더·다이제스트)이 멈춘다.
+  min_machines_running = 1      # 스케줄 작업이 계속 돌게 1대 상시 유지. 시연만이면 0으로.
+  processes = ["app"]
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/"
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "20s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
