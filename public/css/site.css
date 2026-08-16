@@ -19,6 +19,22 @@
   --amber-ink: #a5680a;
   --radius: 20px;
   --maxw: 1040px;
+  /* glass surface tokens — 관리자(admin.css)와 동일한 언어로 통일 */
+  --glass: rgba(255,255,255,.62);
+  --glass-line: rgba(255,255,255,.7);
+  --glass-edge: rgba(18,32,60,.07);
+  --shadow: 0 1px 2px rgba(18,32,60,.04), 0 18px 44px -18px rgba(18,32,60,.22);
+  --shadow-sm: 0 1px 2px rgba(18,32,60,.05), 0 8px 20px -14px rgba(18,32,60,.20);
+}
+/* 예약/조회 페이지에만 은은한 앰비언트 배경 — 글래스 표면이 프로스트로 보이도록.
+   랜딩(:has 미해당)은 기존의 깔끔한 흰 배경을 유지한다. */
+/* 일반(스크롤되는) 배경. 고정 레이어를 backdrop-filter 패널과 겹치면 일부
+   크로미엄에서 스크롤 시 검게 칠해지므로 fixed를 쓰지 않는다. */
+body:has(.reserve-layout), body:has(.status-card) {
+  background:
+    radial-gradient(1050px 620px at 90% 40px, rgba(49,130,246,.12), transparent 60%),
+    radial-gradient(820px 560px at -8% 94%, rgba(13,148,136,.09), transparent 62%),
+    linear-gradient(180deg, #eef1f7 0%, #e9edf4 100%);
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; scroll-padding-top: 76px; }
@@ -288,10 +304,13 @@ footer .cols { display: flex; flex-wrap: wrap; gap: 32px; justify-content: space
 }
 .page-head h1 { margin: 0 0 8px; font-size: clamp(26px, 4vw, 36px); letter-spacing: -1px; font-weight: 800; color: #fff; }
 .page-head p { margin: 0; color: #c3d2f2; max-width: 600px; font-size: 15.5px; }
-.reserve-layout { display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start; padding: 28px 0 64px; }
+.reserve-layout { display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start; padding: 32px 0 72px; }
 @media (max-width: 900px) { .reserve-layout { grid-template-columns: 1fr; } }
-.panel { background: var(--gray-card); border-radius: var(--radius); padding: 28px 30px; }
-.panel h2 { font-size: 18px; margin: 0 0 14px; display: flex; align-items: center; gap: 10px; letter-spacing: -.3px; }
+.panel {
+  background: var(--glass); -webkit-backdrop-filter: blur(22px) saturate(140%); backdrop-filter: blur(22px) saturate(140%);
+  border: 1px solid var(--glass-line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 30px 32px;
+}
+.panel h2 { font-size: 18px; margin: 0 0 16px; display: flex; align-items: center; gap: 10px; letter-spacing: -.3px; }
 .stepnum {
   width: 26px; height: 26px; border-radius: 9px; background: var(--blue); color: #fff;
   display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; flex-shrink: 0;
@@ -299,19 +318,22 @@ footer .cols { display: flex; flex-wrap: wrap; gap: 32px; justify-content: space
 label.field { display: block; font-size: 13.5px; font-weight: 700; margin: 14px 0 6px; }
 label.field .opt { color: var(--ink-faint); font-weight: 500; }
 input[type="text"], input[type="email"], input[type="date"], input[type="number"], select, textarea {
-  width: 100%; padding: 12px 14px; border: 1.5px solid transparent; border-radius: 12px;
-  font-size: 15px; font-family: inherit; background: #fff; color: var(--ink);
+  width: 100%; padding: 12px 14px; border: 1px solid var(--glass-edge); border-radius: 12px;
+  font-size: 15px; font-family: inherit; background: rgba(255,255,255,.78); color: var(--ink);
+  transition: border-color .15s, box-shadow .15s;
 }
-input:focus, select:focus, textarea:focus { outline: none; border-color: var(--blue); }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(49,130,246,.15); }
 .form-hint { font-size: 12.5px; color: var(--ink-faint); margin: 6px 0 0; }
 .sessions { display: grid; gap: 8px; margin-top: 6px; }
 .session-opt { position: relative; }
 .session-opt input { position: absolute; opacity: 0; }
 .session-opt .box {
-  display: flex; align-items: center; gap: 12px; border: 1.5px solid transparent; border-radius: 12px;
-  padding: 12px 15px; cursor: pointer; background: #fff; font-size: 14.5px;
+  display: flex; align-items: center; gap: 12px; border: 1px solid var(--glass-edge); border-radius: 12px;
+  padding: 13px 16px; cursor: pointer; background: rgba(255,255,255,.6); font-size: 14.5px; transition: border-color .15s, background .15s, box-shadow .15s;
 }
-.session-opt input:checked + .box { border-color: var(--blue); background: var(--blue-soft); }
+.session-opt .box:hover { background: rgba(255,255,255,.85); }
+.session-opt input:checked + .box { border-color: var(--blue); background: var(--blue-soft); box-shadow: 0 0 0 3px rgba(49,130,246,.12); }
+.session-opt input:focus-visible + .box { box-shadow: 0 0 0 3px rgba(49,130,246,.3); }
 .session-opt input:disabled + .box { opacity: .45; cursor: not-allowed; }
 .session-opt .ord {
   font-size: 12px; font-weight: 800; letter-spacing: .3px; color: var(--blue-dark);
@@ -336,7 +358,11 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .checkline input { margin-top: 3px; }
 .error-box { background: var(--red-soft); color: var(--red-ink); border-radius: 12px; padding: 13px 16px; margin-bottom: 18px; font-size: 14.5px; font-weight: 600; }
 .hp-field { position: absolute; left: -9999px; opacity: 0; height: 0; overflow: hidden; }
-.side-card { background: var(--gray-card); border-radius: var(--radius); padding: 22px 24px; margin-bottom: 14px; font-size: 14px; color: var(--ink-soft); }
+.side-card {
+  background: var(--glass); -webkit-backdrop-filter: blur(18px) saturate(140%); backdrop-filter: blur(18px) saturate(140%);
+  border: 1px solid var(--glass-line); border-radius: var(--radius); box-shadow: var(--shadow-sm);
+  padding: 22px 24px; margin-bottom: 14px; font-size: 14px; color: var(--ink-soft);
+}
 .side-card h3 { margin: 0 0 8px; font-size: 15px; color: var(--ink); letter-spacing: -.2px; }
 .side-card ol { margin: 0; padding-left: 18px; }
 .side-card li { margin-bottom: 6px; }
