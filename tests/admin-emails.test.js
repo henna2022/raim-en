@@ -44,7 +44,7 @@ test('RS1: 재발송하면 같은 수신자·제목·본문으로 새 email_log 
 test('RS2: 발송함 모드의 재발송 결과 페이지는 "실제 발송 없음"을 분명히 알린다', async () => {
   const page = await get(ctx.baseUrl, ctx.jar, '/admin/emails?resent=1&ok=0');
   assert.equal(page.status, 200);
-  assert.match(await page.text(), /SMTP is not configured, so nothing was actually delivered/);
+  assert.match(await page.text(), /실제로는 아무것도 전달되지 않았습니다/);
 });
 
 test('RS3: 없는 메일 id는 404, 행이 늘지 않는다', async () => {

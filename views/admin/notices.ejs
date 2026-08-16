@@ -1,27 +1,27 @@
-<%- include('partials/top', { title: 'Notices', active: 'notices', staff }) %>
+<%- include('partials/top', { title: '공지', active: 'notices', staff }) %>
 
-<h1>Notices</h1>
-<% if (saved) { %><div class="flash ok">Saved.</div><% } %>
-<p class="muted">Published notices appear in the “Notices” section of the public English site.
-Keep them visitor-relevant: closures, special openings, parking, events.</p>
+<h1>공지</h1>
+<% if (saved) { %><div class="flash ok">저장됨.</div><% } %>
+<p class="muted">게시된 공지는 공개 영문 사이트의 “공지” 섹션에 표시됩니다.
+방문객에게 필요한 내용으로 유지하세요: 휴관, 특별 개관, 주차, 행사.</p>
 
 <div class="panel">
-  <h2 style="margin-top:0;">Add a notice</h2>
+  <h2 style="margin-top:0;">공지 추가</h2>
   <form method="POST" action="/admin/notices">
     <input type="hidden" name="_csrf" value="<%= csrf %>">
-    <label class="f">Title</label>
+    <label class="f">제목</label>
     <input type="text" name="title" style="width:100%;" required maxlength="200">
-    <label class="f">Body (plain text, English)</label>
+    <label class="f">내용 (일반 텍스트, 영문)</label>
     <textarea name="body" rows="3" style="width:100%;" required maxlength="2000"></textarea>
     <div class="row" style="margin-top:10px;">
-      <div><label class="f">Category</label>
+      <div><label class="f">분류</label>
         <select name="category">
-          <option value="general">General</option><option value="hours">Hours/Closure</option>
-          <option value="parking">Parking</option><option value="event">Event</option>
+          <option value="general">일반</option><option value="hours">운영시간/휴관</option>
+          <option value="parking">주차</option><option value="event">행사</option>
         </select></div>
-      <div><label class="f">&nbsp;</label><label style="font-size:13px;"><input type="checkbox" name="pinned"> pin to top</label></div>
-      <div><label class="f">&nbsp;</label><label style="font-size:13px;"><input type="checkbox" name="published" checked> published</label></div>
-      <div><button class="btn" type="submit">Add notice</button></div>
+      <div><label class="f">&nbsp;</label><label style="font-size:13px;"><input type="checkbox" name="pinned"> 상단 고정</label></div>
+      <div><label class="f">&nbsp;</label><label style="font-size:13px;"><input type="checkbox" name="published" checked> 게시됨</label></div>
+      <div><button class="btn" type="submit">공지 추가</button></div>
     </div>
   </form>
 </div>
@@ -31,26 +31,26 @@ Keep them visitor-relevant: closures, special openings, parking, events.</p>
     <form method="POST" action="/admin/notices/<%= n.id %>">
       <input type="hidden" name="_csrf" value="<%= csrf %>">
       <div class="row" style="align-items:center;">
-        <strong style="flex:1;"><% if (n.pinned) { %><span class="badge badge-attended" style="margin-right:6px;">PINNED</span><% } %><%= n.title %></strong>
-        <span class="badge <%= n.published ? 'badge-confirmed' : 'badge-cancelled' %>"><%= n.published ? 'PUBLISHED' : 'HIDDEN' %></span>
+        <strong style="flex:1;"><% if (n.pinned) { %><span class="badge badge-attended" style="margin-right:6px;">상단 고정</span><% } %><%= n.title %></strong>
+        <span class="badge <%= n.published ? 'badge-confirmed' : 'badge-cancelled' %>"><%= n.published ? '게시됨' : '숨김' %></span>
         <span class="muted"><%= n.created_at.slice(0, 10) %></span>
       </div>
-      <label class="f">Title</label>
+      <label class="f">제목</label>
       <input type="text" name="title" value="<%= n.title %>" style="width:100%;" required maxlength="200">
-      <label class="f">Body</label>
+      <label class="f">내용</label>
       <textarea name="body" rows="3" style="width:100%;" required maxlength="2000"><%= n.body %></textarea>
       <div class="row" style="margin-top:10px;">
-        <div><label class="f">Category</label>
+        <div><label class="f">분류</label>
           <select name="category">
             <% for (const c of ['general','hours','parking','event']) { %>
               <option value="<%= c %>" <%= n.category === c ? 'selected' : '' %>><%= c %></option>
             <% } %>
           </select></div>
-        <div><label class="f">&nbsp;</label><label style="font-size:13px;"><input type="checkbox" name="pinned" <%= n.pinned ? 'checked' : '' %>> pinned</label></div>
-        <div><label class="f">&nbsp;</label><label style="font-size:13px;"><input type="checkbox" name="published" <%= n.published ? 'checked' : '' %>> published</label></div>
-        <div><button class="btn sm" type="submit">Save</button></div>
+        <div><label class="f">&nbsp;</label><label style="font-size:13px;"><input type="checkbox" name="pinned" <%= n.pinned ? 'checked' : '' %>> 상단 고정</label></div>
+        <div><label class="f">&nbsp;</label><label style="font-size:13px;"><input type="checkbox" name="published" <%= n.published ? 'checked' : '' %>> 게시됨</label></div>
+        <div><button class="btn sm" type="submit">저장</button></div>
         <div><button class="btn sm red" type="submit" name="_delete" value="1"
-                     onclick="return confirm('Delete this notice?');">Delete</button></div>
+                     onclick="return confirm('이 공지를 삭제할까요?');">삭제</button></div>
       </div>
     </form>
   </div>

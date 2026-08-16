@@ -175,5 +175,5 @@ test('F7: a visitor with a prior no_show shows a "No-shows: 1" badge on the dash
   assert.equal(second.res.status, 302);
 
   const dashboardHtml = await (await get(ctx.baseUrl, ctx.jar, '/admin')).text();
-  assert.match(dashboardHtml, /No-shows: 1/);
+  assert.match(dashboardHtml, /노쇼: 1회/);
 });

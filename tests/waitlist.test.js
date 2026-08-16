@@ -67,7 +67,7 @@ test('W2: waitlisted blocks duplicate requests; My Booking shows waitlist state'
 
 test('W3: dashboard shows the waitlist panel with FIFO position', async () => {
   const html = await (await get(ctx.baseUrl, ctx.jar, '/admin')).text();
-  assert.match(html, /Waitlist — promote when seats free up/);
+  assert.match(html, /대기자 — 좌석이 나면 승격/);
   assert.match(html, new RegExp(res1.code));
   // Anchor to the position CELL — the panel caption contains a literal "(#1 first)"
   // that would satisfy a bare /#1/ even if the pos computation broke.
@@ -91,7 +91,7 @@ test('W4: cancelling a confirmed booking surfaces waitlist candidates for its se
   assert.match(staffMail.html, /승격/);
 
   const dash = await (await get(ctx.baseUrl, ctx.jar, '/admin')).text();
-  assert.match(dash, /1 waitlisted/);
+  assert.match(dash, /대기자 1명/);
 });
 
 test('W5: promotion — confirm from waitlisted (yeyak attestation required)', async () => {

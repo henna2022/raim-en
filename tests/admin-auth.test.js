@@ -26,13 +26,13 @@ test('C2: wrong password -> 401, generalized message (no username enumeration)',
   const res = await adminLogin(ctx.baseUrl, ctx.jar, { username: 'admin', password: 'totally-wrong' });
   assert.equal(res.status, 401);
   const body = await res.text();
-  assert.match(body, /Invalid username or password/);
+  assert.match(body, /아이디 또는 비밀번호가 올바르지 않습니다/);
   // Same message for a nonexistent username too — a client must not be able
   // to distinguish "wrong password" from "no such user" from the wording.
   const res2 = await adminLogin(ctx.baseUrl, ctx.jar, { username: 'nobody-here', password: 'totally-wrong' });
   assert.equal(res2.status, 401);
   const body2 = await res2.text();
-  assert.match(body2, /Invalid username or password/);
+  assert.match(body2, /아이디 또는 비밀번호가 올바르지 않습니다/);
 });
 
 test('C3: correct login -> 302, then GET /admin -> 200', async () => {

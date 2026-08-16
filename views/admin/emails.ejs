@@ -1,37 +1,37 @@
-<%- include('partials/top', { title: 'Emails', active: 'emails', staff }) %>
+<%- include('partials/top', { title: '메일', active: 'emails', staff }) %>
 
-<h1>Emails</h1>
+<h1>메일</h1>
 <% if (!smtpConfigured) { %>
-  <div class="flash warn">SMTP not configured — these emails were <strong>not actually sent</strong>.
-  They are stored here so you can preview exactly what visitors would receive.</div>
+  <div class="flash warn">SMTP가 설정되지 않았습니다 — 이 메일들은 <strong>실제로 발송되지 않았습니다</strong>.
+  방문자에게 전달될 내용을 그대로 미리 볼 수 있도록 여기에 저장해 둡니다.</div>
 <% } %>
 <% if (resent) { %>
   <% if (!smtpConfigured) { %>
-    <div class="flash warn">Resend stored to the outbox (top row) — SMTP is not configured, so nothing was actually delivered.</div>
+    <div class="flash warn">재발송 내용을 Outbox(발송함, 맨 위 행)에 저장했습니다 — SMTP가 설정되지 않아 실제로는 아무것도 전달되지 않았습니다.</div>
   <% } else if (resendOk) { %>
-    <div class="flash ok">Resent — see the new entry at the top.</div>
+    <div class="flash ok">재발송했습니다 — 맨 위의 새 항목을 확인하세요.</div>
   <% } else { %>
-    <div class="flash warn">Resend attempted but delivery <strong>failed</strong> — check the new entry's error at the top.</div>
+    <div class="flash warn">재발송을 시도했지만 전달에 <strong>실패</strong>했습니다 — 맨 위 새 항목의 오류를 확인하세요.</div>
   <% } %>
 <% } %>
 
 <div class="panel">
-  <% if (emails.length === 0) { %><p class="muted">No emails yet.</p><% } else { %>
+  <% if (emails.length === 0) { %><p class="muted">아직 메일이 없습니다.</p><% } else { %>
   <table>
-    <tr><th>#</th><th>To</th><th>Subject</th><th>Delivery</th><th>Created</th><th></th></tr>
+    <tr><th>#</th><th>받는사람</th><th>제목</th><th>발송</th><th>생성</th><th></th></tr>
     <% for (const e of emails) { %>
       <tr>
         <td class="muted"><%= e.id %></td>
         <td><%= e.to_addr %></td>
         <td><%= e.subject %></td>
         <td>
-          <% if (e.sent) { %><span class="badge badge-confirmed">SENT</span>
-          <% } else if (e.error) { %><span class="badge badge-declined">ERROR</span> <span class="muted"><%= e.error %></span>
-          <% } else { %><span class="badge badge-pending">OUTBOX</span><% } %>
+          <% if (e.sent) { %><span class="badge badge-confirmed">발송됨</span>
+          <% } else if (e.error) { %><span class="badge badge-declined">오류</span> <span class="muted"><%= e.error %></span>
+          <% } else { %><span class="badge badge-pending">발송함</span><% } %>
         </td>
         <td class="muted"><%= e.created_at %></td>
         <td style="white-space:nowrap;">
-          <a class="btn sm gray" href="/admin/emails/<%= e.id %>" target="_blank">Preview</a>
+          <a class="btn sm gray" href="/admin/emails/<%= e.id %>" target="_blank">미리보기</a>
           <%# 재발송은 저장된 스냅샷 그대로다 — 예약 상태가 그사이 바뀌었을 수 있으니
               Preview로 내용을 확인하고 누르는 흐름을 전제로 confirm을 한 번 거친다.
               수신 주소(방문자 입력값)는 confirm 문구에 넣지 않는다 — 인라인 이벤트
@@ -41,7 +41,7 @@
           <form method="POST" action="/admin/emails/<%= e.id %>/resend" style="display:inline;"
                 onsubmit="return confirm('Resend this email? It will be sent again exactly as stored.');">
             <input type="hidden" name="_csrf" value="<%= csrf %>">
-            <button class="btn sm gray" type="submit">Resend</button>
+            <button class="btn sm gray" type="submit">재발송</button>
           </form>
         </td>
       </tr>

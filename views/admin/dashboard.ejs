@@ -1,50 +1,50 @@
-<%- include('partials/top', { title: 'Dashboard', active: 'dashboard', staff }) %>
+<%- include('partials/top', { title: '대시보드', active: 'dashboard', staff }) %>
 
-<h1>Dashboard</h1>
+<h1>대시보드</h1>
 <% if (!smtpConfigured) { %>
-  <div class="flash warn">SMTP is not configured — confirmation emails are saved to the
-  <a href="/admin/emails">Outbox</a> instead of being sent. Set SMTP_* environment variables to enable real sending.</div>
+  <div class="flash warn">SMTP가 설정되지 않아 확정 메일이 발송되지 않고
+  <a href="/admin/emails">발송함(Outbox)</a>에 저장됩니다. 실제 발송을 사용하려면 SMTP_* 환경 변수를 설정하세요.</div>
 <% } %>
 
 <div>
-  <span class="stat"><span class="n"><%= pending.length %></span><br><span class="l">Pending requests</span></span>
+  <span class="stat"><span class="n"><%= pending.length %></span><br><span class="l">검토 대기 신청</span></span>
   <% if (lateCount > 0) { %>
-    <span class="stat late-stat"><span class="n"><%= lateCount %></span><br><span class="l">Over <%= slaHours %>h — reply now</span></span>
+    <span class="stat late-stat"><span class="n"><%= lateCount %></span><br><span class="l"><%= slaHours %>시간 초과 — 지금 회신</span></span>
   <% } %>
   <% if (releaseQueue.length > 0) { %>
-    <span class="stat late-stat"><span class="n"><%= releaseQueue.length %></span><br><span class="l">Yeyak seats to release</span></span>
+    <span class="stat late-stat"><span class="n"><%= releaseQueue.length %></span><br><span class="l">yeyak 해제 대기</span></span>
   <% } %>
   <% if (waitlist.length > 0) { %>
-    <span class="stat"><span class="n"><%= waitlist.length %></span><br><span class="l">Waitlisted</span></span>
+    <span class="stat"><span class="n"><%= waitlist.length %></span><br><span class="l">대기자</span></span>
   <% } %>
-  <span class="stat"><span class="n"><%= todays.length %></span><br><span class="l">Visitors today (<%= today %>)</span></span>
-  <span class="stat"><a class="btn gray" href="/admin/day/<%= today %>/print" target="_blank">Print today's desk list</a></span>
+  <span class="stat"><span class="n"><%= todays.length %></span><br><span class="l">오늘 방문자 (<%= today %>)</span></span>
+  <span class="stat"><a class="btn gray" href="/admin/day/<%= today %>/print" target="_blank">오늘 데스크 명단 인쇄</a></span>
 </div>
 
 <% if (releaseQueue.length > 0) { %>
 <div class="panel" style="border:1.5px solid #f6cccc;">
-  <h2 style="margin-top:0;color:#d22030;">Yeyak release queue — blocked seats to resolve</h2>
-  <p class="muted">These confirmed reservations were cancelled, but their seats are still blocked in the
-  <strong>yeyak admin</strong> (관리자 예약). For each one: promote waitlisted requests into the seats
-  (Waitlist panel below), release the rest in yeyak, then mark it resolved here. If seats end up free
-  again, also remove the session's sold-out mark under Schedule.</p>
+  <h2 style="margin-top:0;color:#d22030;">yeyak 해제 대기열 — 차단 좌석 처리</h2>
+  <p class="muted">확정되었던 이 예약들은 취소되었지만, 좌석이 여전히
+  <strong>yeyak 관리자</strong>(관리자 예약)에서 차단되어 있습니다. 각 건에 대해: 대기자 신청을 해당 좌석으로 승격하고
+  (아래 대기자 패널), 나머지는 yeyak에서 해제한 다음, 여기서 처리 완료로 표시하세요. 좌석이 다시 비게
+  되면, 일정 메뉴에서 해당 회차의 매진 표시도 해제하세요.</p>
   <table>
-    <tr><th>Code</th><th>Visit</th><th>Session</th><th>Party</th><th>Cancelled</th><th></th></tr>
+    <tr><th>코드</th><th>방문일</th><th>회차</th><th>인원</th><th>취소</th><th></th></tr>
     <% for (const r of releaseQueue) { %>
       <tr>
         <td><strong><%= r.code %></strong></td>
         <td><%= r.visit_date %> <span class="muted"><%= r.start_time %></span></td>
-        <td><%= r.tour_type === 'permanent' ? 'Permanent' : 'Special' %>
+        <td><%= r.tour_type === 'permanent' ? '상설' : '기획' %>
             <span class="badge badge-<%= r.language %>"><%= r.language.toUpperCase() %></span></td>
         <td><%= r.party_size %>
-          <% if (r.waitlist_count > 0) { %><br><span class="badge badge-waitlisted" title="Consider promoting a waitlisted request into these blocked seats before releasing them."><%= r.waitlist_count %> waitlisted ↓</span><% } %>
+          <% if (r.waitlist_count > 0) { %><br><span class="badge badge-waitlisted" title="차단된 좌석을 해제하기 전에 대기자 신청을 해당 좌석으로 승격하는 것을 검토하세요.">대기자 <%= r.waitlist_count %>명 ↓</span><% } %>
         </td>
         <td class="muted"><%= r.decided_at ? r.decided_at.slice(0, 16) : '' %> (<%= r.decided_by %>)</td>
         <td>
           <form method="POST" action="/admin/reservations/<%= r.id %>/released"
                 onsubmit="return confirm('이 예약의 차단 좌석 <%= r.party_size %>석 처리(대기자 승격 또는 yeyak 해제)를 완료했습니까?<%= r.waitlist_count > 0 ? ' (이 회차 대기자 ' + r.waitlist_count + '명 — 승격을 먼저 검토하세요)' : '' %>');">
             <input type="hidden" name="_csrf" value="<%= csrf %>">
-            <button class="btn sm green" type="submit">Resolved</button>
+            <button class="btn sm green" type="submit">처리 완료</button>
           </form>
         </td>
       </tr>
@@ -56,19 +56,19 @@
 <% if (batchDone.confirmed > 0 || batchDone.skipped > 0) { %>
   <div class="flash <%= (batchDone.skipped > 0 || batchDone.emailfail > 0) ? 'warn' : 'ok' %>">
     <% if (batchDone.confirmed > 0) { %>
-      Confirmed <%= batchDone.confirmed %> request(s).
+      <%= batchDone.confirmed %>건 확정했습니다.
       <% if (batchDone.emailfail > 0) { %>
-        <strong><%= batchDone.emailfail %> confirmation email(s) failed to send</strong> —
-        check <a href="/admin/emails">Emails</a> and resend manually.
+        <strong>확정 메일 <%= batchDone.emailfail %>건 발송 실패</strong> —
+        <a href="/admin/emails">메일</a>을 확인하고 직접 다시 발송하세요.
       <% } else if (smtpConfigured) { %>
-        Confirmation emails sent.
+        확정 메일을 발송했습니다.
       <% } else { %>
-        Confirmation emails are in the <a href="/admin/emails">Outbox</a> (SMTP not configured).
+        확정 메일이 <a href="/admin/emails">발송함(Outbox)</a>에 있습니다 (SMTP 미설정).
       <% } %>
     <% } %>
     <% if (batchDone.skipped > 0) { %>
-      <strong><%= batchDone.skipped %> request(s) were skipped</strong> (no longer pending — e.g. cancelled by the
-      visitor meanwhile). Re-check the seat count you blocked in the yeyak admin.
+      <strong><%= batchDone.skipped %>건은 건너뛰었습니다</strong> (더 이상 검토 대기 상태가 아님 — 예: 그 사이
+      방문자가 취소). yeyak 관리자에서 차단한 좌석 수를 다시 확인하세요.
     <% } %>
   </div>
   <script>
@@ -79,12 +79,12 @@
 <% } %>
 
 <div class="panel">
-  <h2 style="margin-top:0;">Pending requests — review &amp; confirm per session</h2>
-  <p class="muted">Requests are grouped per session so yeyak is only needed once per group:
-  ① check availability for the session → ② block the group's <strong>total seats</strong> in the
-  <strong>yeyak admin</strong> (관리자 예약) → ③ confirm the whole group here.
-  Untick a request to leave it out (e.g. to decline it individually).</p>
-  <% if (pendingGroups.length === 0) { %><p class="muted">No pending requests.</p><% } %>
+  <h2 style="margin-top:0;">검토 대기 신청 — 회차별 검토 및 확정</h2>
+  <p class="muted">신청은 회차별로 묶여 있어 그룹당 yeyak 작업은 한 번만 필요합니다:
+  ① 해당 회차의 잔여 좌석 확인 → ② <strong>yeyak 관리자</strong>(관리자 예약)에서 그룹의 <strong>총 좌석</strong> 차단
+  → ③ 여기서 그룹 전체 확정.
+  특정 신청을 제외하려면 체크를 해제하세요(예: 개별 거절).</p>
+  <% if (pendingGroups.length === 0) { %><p class="muted">검토 대기 신청이 없습니다.</p><% } %>
   <% for (const g of pendingGroups) { %>
     <div class="res-group <%= g.late ? 'late-group' : '' %>" id="group-<%= g.key %>"
          data-date="<%= g.visit_date %>" data-koweekday="<%= g.ko_weekday %>"
@@ -92,54 +92,54 @@
       <div class="res-group-head">
         <div>
           <strong><%= g.visit_date %> (<%= g.ko_weekday %>)</strong> · <%= g.start_time %>–<%= g.end_time %>
-          · <%= g.tour_type === 'permanent' ? 'Permanent' : 'Special' %>
+          · <%= g.tour_type === 'permanent' ? '상설' : '기획' %>
           <span class="badge badge-<%= g.language %>"><%= g.language.toUpperCase() %></span>
-          <% if (g.late) { %><span class="badge badge-declined">OVER <%= slaHours %>H</span><% } %>
-          <% if (g.soldout) { %><span class="badge badge-noshow" title="This session is marked fully booked — waitlist or decline these requests instead of blocking more seats.">SOLD OUT</span><% } %>
-          <% if (g.waitlist_count > 0) { %><span class="badge badge-waitlisted" title="This session has older waitlisted requests (see the Waitlist panel below). They asked first — promote them before confirming newer pending requests."><%= g.waitlist_count %> WAITLISTED FIRST ↓</span><% } %>
+          <% if (g.late) { %><span class="badge badge-declined"><%= slaHours %>시간 초과</span><% } %>
+          <% if (g.soldout) { %><span class="badge badge-noshow" title="이 회차는 매진으로 표시되어 있습니다 — 좌석을 추가로 차단하지 말고 이 신청들을 대기자로 두거나 거절하세요.">매진</span><% } %>
+          <% if (g.waitlist_count > 0) { %><span class="badge badge-waitlisted" title="이 회차에는 먼저 접수된 대기자 신청이 있습니다(아래 대기자 패널 참고). 먼저 신청한 분들이므로, 더 최근의 검토 대기 신청을 확정하기 전에 이들을 먼저 승격하세요.">대기자 <%= g.waitlist_count %>명 우선 ↓</span><% } %>
         </div>
         <div class="res-group-tools">
-          <span class="muted"><span class="sel-count"><%= g.requests.length %></span> request(s) ·
-          <strong class="sel-seats"><%= g.seats %></strong> seat(s)</span>
-          <button type="button" class="btn sm gray copy-yeyak">Copy for yeyak</button>
+          <span class="muted"><span class="sel-count"><%= g.requests.length %></span>건 ·
+          <strong class="sel-seats"><%= g.seats %></strong>석</span>
+          <button type="button" class="btn sm gray copy-yeyak">yeyak용 복사</button>
           <%
             const svcUrl = g.tour_type === 'permanent' ? settings.yeyak_url_permanent : settings.yeyak_url_special;
           %>
           <% if (svcUrl && /^https?:\/\//.test(svcUrl)) { %>
-            <a class="btn sm outline" href="<%= svcUrl %>" target="_blank" rel="noopener">yeyak service ↗</a>
+            <a class="btn sm outline" href="<%= svcUrl %>" target="_blank" rel="noopener">yeyak 예약 ↗</a>
           <% } %>
           <% if (settings.yeyak_admin_url && /^https?:\/\//.test(settings.yeyak_admin_url)) { %>
-            <a class="btn sm outline" href="<%= settings.yeyak_admin_url %>" target="_blank" rel="noopener">yeyak admin ↗</a>
+            <a class="btn sm outline" href="<%= settings.yeyak_admin_url %>" target="_blank" rel="noopener">yeyak 관리자 ↗</a>
           <% } %>
         </div>
       </div>
       <table>
-        <tr><th></th><th>Code</th><th>Visitor</th><th>Party</th><th>Waiting</th><th>Actions</th></tr>
+        <tr><th></th><th>코드</th><th>방문자</th><th>인원</th><th>대기시간</th><th>처리</th></tr>
         <% for (const r of g.requests) { %>
           <tr class="<%= r.age.late ? 'late' : '' %>">
             <td><input type="checkbox" name="ids" value="<%= r.id %>" form="bf-<%= g.key %>" checked
                        class="row-select" data-party="<%= r.party_size %>" data-code="<%= r.code %>"></td>
             <td><strong><%= r.code %></strong></td>
             <td><%= r.name %><br><span class="muted"><%= r.email %><%= r.country ? ' · ' + r.country : '' %></span>
-                <% if (r.noshow_count > 0) { %><br><span class="badge badge-noshow">No-shows: <%= r.noshow_count %></span><% } %>
-                <% if (r.notes) { %><br><span class="muted">Note: <%= r.notes %></span><% } %></td>
+                <% if (r.noshow_count > 0) { %><br><span class="badge badge-noshow">노쇼: <%= r.noshow_count %>회</span><% } %>
+                <% if (r.notes) { %><br><span class="muted">메모: <%= r.notes %></span><% } %></td>
             <td><%= r.party_size %></td>
             <td class="<%= r.age.late ? '' : 'muted' %>">
-              <%= r.age.label %><% if (r.age.late) { %><br><span class="badge badge-declined">OVER <%= slaHours %>H</span><% } %>
+              <%= r.age.label %><% if (r.age.late) { %><br><span class="badge badge-declined"><%= slaHours %>시간 초과</span><% } %>
             </td>
             <td><%- include('partials/res_actions', { r }) %></td>
           </tr>
         <% } %>
       </table>
       <form id="bf-<%= g.key %>" method="POST" action="/admin/reservations/batch-confirm" class="batch-bar"
-            onsubmit="return confirm('Confirm the selected requests and email each visitor?');">
+            onsubmit="return confirm('선택한 신청을 확정하고 각 방문자에게 메일을 발송하시겠습니까?');">
         <input type="hidden" name="_csrf" value="<%= csrf %>">
         <label class="batch-attest">
           <input type="checkbox" name="yeyak_blocked" required>
-          <span>I have <strong>blocked <span class="sel-seats"><%= g.seats %></span> seat(s)</strong> for this session
-          in the yeyak admin (관리자 예약).</span>
+          <span>이 회차를 위해 yeyak 관리자(관리자 예약)에서
+          <strong><span class="sel-seats"><%= g.seats %></span>석을 차단</strong>했습니다.</span>
         </label>
-        <button class="btn sm green" type="submit">Confirm <span class="sel-count"><%= g.requests.length %></span> &amp; email visitors</button>
+        <button class="btn sm green" type="submit"><span class="sel-count"><%= g.requests.length %></span>건 확정 · 방문자 메일</button>
       </form>
     </div>
   <% } %>
@@ -153,7 +153,7 @@
   function copyText(text, btn) {
     var done = function () {
       var old = btn.textContent;
-      btn.textContent = 'Copied ✓';
+      btn.textContent = '복사됨 ✓';
       setTimeout(function () { btn.textContent = old; }, 1500);
     };
     if (navigator.clipboard && window.isSecureContext) {
@@ -211,21 +211,20 @@
 
 <% if (waitlist.length > 0) { %>
 <div class="panel">
-  <h2 style="margin-top:0;">Waitlist — promote when seats free up</h2>
-  <p class="muted">First come, first served within each session (#1 first). When a confirmed booking for the same
-  session is cancelled, its blocked yeyak seats can go straight to the next person here — confirm them instead of
-  releasing the seats.</p>
+  <h2 style="margin-top:0;">대기자 — 좌석이 나면 승격</h2>
+  <p class="muted">각 회차 내에서 선착순입니다(#1번이 먼저). 같은 회차의 확정 예약이 취소되면, 차단된 yeyak
+  좌석을 여기 다음 순번에게 바로 넘길 수 있습니다 — 좌석을 해제하는 대신 이들을 확정하세요.</p>
   <table>
-    <tr><th>#</th><th>Visit</th><th>Session</th><th>Code</th><th>Visitor</th><th>Party</th><th>Waiting</th><th>Actions</th></tr>
+    <tr><th>#</th><th>방문일</th><th>회차</th><th>코드</th><th>방문자</th><th>인원</th><th>대기시간</th><th>처리</th></tr>
     <% for (const r of waitlist) { %>
       <tr>
         <td class="muted">#<%= r.pos %></td>
         <td><%= r.visit_date %></td>
-        <td><%= r.start_time %>–<%= r.end_time %> <%= r.tour_type === 'permanent' ? 'Permanent' : 'Special' %>
+        <td><%= r.start_time %>–<%= r.end_time %> <%= r.tour_type === 'permanent' ? '상설' : '기획' %>
             <span class="badge badge-<%= r.language %>"><%= r.language.toUpperCase() %></span></td>
         <td><strong><%= r.code %></strong></td>
         <td><%= r.name %><br><span class="muted"><%= r.email %><%= r.country ? ' · ' + r.country : '' %></span>
-            <% if (r.notes) { %><br><span class="muted">Note: <%= r.notes %></span><% } %></td>
+            <% if (r.notes) { %><br><span class="muted">메모: <%= r.notes %></span><% } %></td>
         <td><%= r.party_size %></td>
         <td class="muted"><%= r.age.label %></td>
         <td><%- include('partials/res_actions', { r }) %></td>
@@ -236,14 +235,14 @@
 <% } %>
 
 <div class="panel">
-  <h2 style="margin-top:0;">Today's confirmed visitors</h2>
-  <% if (todays.length === 0) { %><p class="muted">No confirmed foreign-visitor reservations today.</p><% } else { %>
+  <h2 style="margin-top:0;">오늘 확정 방문자</h2>
+  <% if (todays.length === 0) { %><p class="muted">오늘 확정된 외국인 방문자 예약이 없습니다.</p><% } else { %>
   <table>
-    <tr><th>Time</th><th>Session</th><th>Code</th><th>Name</th><th>Party</th><th>Status</th><th></th></tr>
+    <tr><th>시간</th><th>회차</th><th>코드</th><th>이름</th><th>인원</th><th>상태</th><th></th></tr>
     <% for (const r of todays) { const [label, cls] = STATUS_BADGE[r.status] || [r.status, 'badge-pending']; %>
       <tr>
         <td><strong><%= r.start_time %></strong></td>
-        <td><%= r.tour_type === 'permanent' ? 'Permanent' : 'Special' %>
+        <td><%= r.tour_type === 'permanent' ? '상설' : '기획' %>
             <span class="badge badge-<%= r.language %>"><%= r.language.toUpperCase() %></span></td>
         <td><%= r.code %></td>
         <td><%= r.name %></td>

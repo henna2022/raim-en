@@ -1,16 +1,16 @@
-<%- include('partials/top', { title: 'Schedule', active: 'schedule', staff }) %>
-<% const WDAYS = [[2,'Tue'],[3,'Wed'],[4,'Thu'],[5,'Fri'],[6,'Sat'],[0,'Sun'],[1,'Mon']]; %>
+<%- include('partials/top', { title: '일정', active: 'schedule', staff }) %>
+<% const WDAYS = [[2,'화'],[3,'수'],[4,'목'],[5,'금'],[6,'토'],[0,'일'],[1,'월']]; %>
 
-<h1>Schedule</h1>
-<% if (saved) { %><div class="flash ok">Saved.</div><% } %>
+<h1>일정</h1>
+<% if (saved) { %><div class="flash ok">저장되었습니다.</div><% } %>
 <% if (error) { %><div class="flash err"><%= error %></div><% } %>
 
 <div class="panel">
-  <h2 style="margin-top:0;">Tour sessions</h2>
-  <p class="muted">These define which sessions visitors can request, per weekday. Deactivate (or delete) a session to
-  hide it from the booking form. Sessions with existing reservations are deactivated instead of deleted.</p>
+  <h2 style="margin-top:0;">투어 회차</h2>
+  <p class="muted">요일별로 방문객이 신청할 수 있는 회차를 정의합니다. 회차를 비활성화(또는 삭제)하면
+  예약 양식에서 숨겨집니다. 기존 예약이 있는 회차는 삭제되지 않고 비활성화됩니다.</p>
   <table>
-    <tr><th>Label</th><th>Type</th><th>Time</th><th>Language</th><th>Days</th><th>Active</th><th></th></tr>
+    <tr><th>이름</th><th>유형</th><th>시간</th><th>언어</th><th>요일</th><th>활성</th><th></th></tr>
     <% for (const s of slots) { %>
       <tr>
         <td colspan="7" style="padding:0;border-bottom:1px solid var(--line);">
@@ -18,14 +18,14 @@
             <input type="hidden" name="_csrf" value="<%= csrf %>">
             <input type="text" name="label" value="<%= s.label %>" style="flex:1;min-width:220px;">
             <select name="tour_type">
-              <option value="permanent" <%= s.tour_type === 'permanent' ? 'selected' : '' %>>Permanent</option>
-              <option value="special" <%= s.tour_type === 'special' ? 'selected' : '' %>>Special</option>
+              <option value="permanent" <%= s.tour_type === 'permanent' ? 'selected' : '' %>>상설</option>
+              <option value="special" <%= s.tour_type === 'special' ? 'selected' : '' %>>기획</option>
             </select>
             <input type="time" name="start_time" value="<%= s.start_time %>" required>
             <input type="time" name="end_time" value="<%= s.end_time %>" required>
             <select name="language">
-              <option value="ko" <%= s.language === 'ko' ? 'selected' : '' %>>Korean</option>
-              <option value="en" <%= s.language === 'en' ? 'selected' : '' %>>English</option>
+              <option value="ko" <%= s.language === 'ko' ? 'selected' : '' %>>한국어</option>
+              <option value="en" <%= s.language === 'en' ? 'selected' : '' %>>영어</option>
             </select>
             <span style="display:flex;gap:6px;flex-wrap:wrap;">
               <% for (const [num, name] of WDAYS) { %>
@@ -36,28 +36,28 @@
               <% } %>
             </span>
             <label style="font-size:12px;display:flex;gap:4px;align-items:center;">
-              <input type="checkbox" name="active" <%= s.active ? 'checked' : '' %>> active
+              <input type="checkbox" name="active" <%= s.active ? 'checked' : '' %>> 활성
             </label>
-            <button class="btn sm" type="submit">Save</button>
+            <button class="btn sm" type="submit">저장</button>
             <button class="btn sm red" type="submit" name="_delete" value="1"
-                    onclick="return confirm('Delete this session?');">Delete</button>
+                    onclick="return confirm('이 회차를 삭제하시겠습니까?');">삭제</button>
           </form>
         </td>
       </tr>
     <% } %>
   </table>
 
-  <h2>Add a session</h2>
+  <h2>회차 추가</h2>
   <form method="POST" action="/admin/schedule/slots" class="row">
     <input type="hidden" name="_csrf" value="<%= csrf %>">
-    <div><label class="f">Label</label><input type="text" name="label" placeholder="e.g. Permanent Exhibition Tour #7" style="min-width:260px;" required></div>
-    <div><label class="f">Type</label>
-      <select name="tour_type"><option value="permanent">Permanent</option><option value="special">Special</option></select></div>
-    <div><label class="f">Start</label><input type="time" name="start_time" required></div>
-    <div><label class="f">End</label><input type="time" name="end_time" required></div>
-    <div><label class="f">Language</label>
-      <select name="language"><option value="ko">Korean</option><option value="en">English</option></select></div>
-    <div><label class="f">Days</label>
+    <div><label class="f">이름</label><input type="text" name="label" placeholder="예: 상설 전시 투어 #7" style="min-width:260px;" required></div>
+    <div><label class="f">유형</label>
+      <select name="tour_type"><option value="permanent">상설</option><option value="special">기획</option></select></div>
+    <div><label class="f">시작</label><input type="time" name="start_time" required></div>
+    <div><label class="f">종료</label><input type="time" name="end_time" required></div>
+    <div><label class="f">언어</label>
+      <select name="language"><option value="ko">한국어</option><option value="en">영어</option></select></div>
+    <div><label class="f">요일</label>
       <span style="display:flex;gap:6px;flex-wrap:wrap;">
         <% for (const [num, name] of WDAYS) { %>
           <label style="font-size:12px;display:flex;gap:3px;align-items:center;">
@@ -66,17 +66,17 @@
         <% } %>
       </span></div>
     <div><label class="f">&nbsp;</label>
-      <label style="font-size:12px;"><input type="checkbox" name="active" checked> active</label></div>
-    <div><button class="btn" type="submit">Add session</button></div>
+      <label style="font-size:12px;"><input type="checkbox" name="active" checked> 활성</label></div>
+    <div><button class="btn" type="submit">회차 추가</button></div>
   </form>
 </div>
 
 <div class="panel">
-  <h2 style="margin-top:0;">Closures &amp; special openings</h2>
-  <p class="muted">Mondays are closed automatically. Add a date here to close the museum on another day
-  (holiday closure), or to <em>open</em> a Monday (e.g. when Monday is a public holiday and the closure moves to Tuesday).</p>
+  <h2 style="margin-top:0;">휴관 및 공휴일 개관</h2>
+  <p class="muted">월요일은 자동으로 휴관합니다. 다른 날에 박물관을 휴관하려면(공휴일 휴관) 여기에 날짜를 추가하고,
+  월요일을 <em>개관</em>하려면(예: 월요일이 공휴일이어서 휴관이 화요일로 옮겨지는 경우) 등록하세요.</p>
   <table>
-    <tr><th>Date</th><th>Kind</th><th>Reason</th><th></th></tr>
+    <tr><th>날짜</th><th>종류</th><th>사유</th><th></th></tr>
     <% for (const c of closures) { %>
       <tr>
         <td><%= c.date %></td>
@@ -85,7 +85,7 @@
         <td class="right">
           <form method="POST" action="/admin/schedule/closures/<%= c.id %>/delete" style="display:inline;">
             <input type="hidden" name="_csrf" value="<%= csrf %>">
-            <button class="btn sm red" type="submit">Remove</button>
+            <button class="btn sm red" type="submit">삭제</button>
           </form>
         </td>
       </tr>
@@ -93,39 +93,39 @@
   </table>
   <form method="POST" action="/admin/schedule/closures" class="row" style="margin-top:14px;">
     <input type="hidden" name="_csrf" value="<%= csrf %>">
-    <div><label class="f">Date</label><input type="date" name="date" required></div>
-    <div><label class="f">Kind</label>
+    <div><label class="f">날짜</label><input type="date" name="date" required></div>
+    <div><label class="f">종류</label>
       <select name="kind">
-        <option value="closed">Closed (extra closure)</option>
-        <option value="open">Open (override Monday closure)</option>
+        <option value="closed">휴관 (추가 휴관)</option>
+        <option value="open">개관 (월요일 휴관 해제)</option>
       </select></div>
-    <div style="flex:1;"><label class="f">Reason (shown to visitors)</label>
-      <input type="text" name="reason" placeholder="e.g. Chuseok holiday" style="width:100%;"></div>
-    <div><button class="btn" type="submit">Add</button></div>
+    <div style="flex:1;"><label class="f">사유 (방문객에게 표시)</label>
+      <input type="text" name="reason" placeholder="예: 추석 연휴" style="width:100%;"></div>
+    <div><button class="btn" type="submit">추가</button></div>
   </form>
 </div>
 
 <div class="panel">
-  <h2 style="margin-top:0;">Opening calendar — next 120 days</h2>
-  <p class="muted">Computed from the rules, so you can check them at a glance:
-  Mondays are closed, <strong>but a Monday that is a public holiday opens and the Tuesday closes instead</strong>.
-  <strong>1 January, Seollal day and Chuseok day are always closed</strong> — the other two days of each holiday
-  period stay open. The Special Exhibition's 09:30 session runs on weekends <em>and</em> public holidays.
-  Anything you add under Closures below overrides all of this.</p>
+  <h2 style="margin-top:0;">개관 달력 — 향후 120일</h2>
+  <p class="muted">규칙에 따라 자동 계산되므로 한눈에 확인할 수 있습니다:
+  월요일은 휴관하지만, <strong>공휴일인 월요일은 개관하고 대신 화요일이 휴관합니다</strong>.
+  <strong>1월 1일, 설날 당일, 추석 당일은 항상 휴관</strong>하며, 각 연휴의 나머지 이틀은 개관합니다.
+  기획전의 09:30 회차는 주말<em>과</em> 공휴일에 운영됩니다.
+  아래 휴관 항목에 추가하는 내용은 이 모든 규칙보다 우선합니다.</p>
   <% if (!holidayTableCovers) { %>
     <div class="flash warn">공휴일 표는 <%= holidayYears.join(', ') %>년까지만 들어 있습니다.
-    그 이후 날짜는 공휴일로 인식되지 않으니(월요일 휴관 규칙만 적용) 아래 Closures에 직접 등록하거나
+    그 이후 날짜는 공휴일로 인식되지 않으니(월요일 휴관 규칙만 적용) 아래 휴관 항목에 직접 등록하거나
     <code>src/holidays.js</code>에 연도를 추가하세요.</div>
   <% } %>
   <table>
-    <tr><th>Date</th><th>Public holiday</th><th>Status</th></tr>
+    <tr><th>날짜</th><th>공휴일</th><th>상태</th></tr>
     <% for (const c of upcomingClosures) { %>
       <tr>
-        <td><%= c.date %> <span class="muted"><%= ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(c.date + 'T12:00:00Z').getUTCDay()] %></span></td>
+        <td><%= c.date %> <span class="muted"><%= ['일','월','화','수','목','금','토'][new Date(c.date + 'T12:00:00Z').getUTCDay()] %></span></td>
         <td><%= c.holiday %></td>
         <td>
-          <% if (c.open) { %><span class="badge badge-confirmed">OPEN</span>
-          <% } else { %><span class="badge badge-declined">CLOSED</span> <span class="muted"><%= c.reason %></span><% } %>
+          <% if (c.open) { %><span class="badge badge-confirmed">개관</span>
+          <% } else { %><span class="badge badge-declined">휴관</span> <span class="muted"><%= c.reason %></span><% } %>
         </td>
       </tr>
     <% } %>
@@ -133,24 +133,24 @@
 </div>
 
 <div class="panel">
-  <h2 style="margin-top:0;">Fully booked (sold-out) sessions</h2>
-  <p class="muted">A session marked here stops appearing on the booking form for that date, so visitors
-  can't file requests you would only have to decline. Marks are usually set from the decline form on the
-  Dashboard; add one manually when you spot a full session in yeyak. Remove the mark if seats free up —
-  past dates are cleaned up automatically.</p>
-  <% if (soldout.length === 0) { %><p class="muted">No upcoming sold-out sessions.</p><% } else { %>
+  <h2 style="margin-top:0;">매진 회차</h2>
+  <p class="muted">여기에 표시된 회차는 해당 날짜의 예약 양식에 더 이상 표시되지 않으므로, 어차피 거절해야 할
+  신청을 방문객이 넣는 일을 막을 수 있습니다. 표시는 보통 대시보드의 거절 양식에서 설정되며, yeyak에서
+  매진된 회차를 발견하면 수동으로 추가하세요. 좌석에 여유가 생기면 표시를 해제하세요 —
+  지난 날짜는 자동으로 정리됩니다.</p>
+  <% if (soldout.length === 0) { %><p class="muted">예정된 매진 회차가 없습니다.</p><% } else { %>
   <table>
-    <tr><th>Date</th><th>Session</th><th>Marked by</th><th></th></tr>
+    <tr><th>날짜</th><th>회차</th><th>표시자</th><th></th></tr>
     <% for (const so of soldout) { %>
       <tr>
         <td><%= so.date %></td>
-        <td><%= so.start_time %>–<%= so.end_time %> · <%= so.tour_type === 'permanent' ? 'Permanent' : 'Special' %>
+        <td><%= so.start_time %>–<%= so.end_time %> · <%= so.tour_type === 'permanent' ? '상설' : '기획' %>
             <span class="badge badge-<%= so.language %>"><%= so.language.toUpperCase() %></span></td>
         <td class="muted"><%= so.created_by %> · <%= so.created_at ? so.created_at.slice(0, 16) : '' %></td>
         <td class="right">
           <form method="POST" action="/admin/schedule/soldout/<%= so.id %>/delete" style="display:inline;">
             <input type="hidden" name="_csrf" value="<%= csrf %>">
-            <button class="btn sm red" type="submit">Remove</button>
+            <button class="btn sm red" type="submit">삭제</button>
           </form>
         </td>
       </tr>
@@ -159,18 +159,18 @@
   <% } %>
   <form method="POST" action="/admin/schedule/soldout" class="row" style="margin-top:14px;">
     <input type="hidden" name="_csrf" value="<%= csrf %>">
-    <div><label class="f">Date</label><input type="date" name="date" min="<%= today %>" required></div>
-    <div><label class="f">Session</label>
+    <div><label class="f">날짜</label><input type="date" name="date" min="<%= today %>" required></div>
+    <div><label class="f">회차</label>
       <select name="slot_id">
-        <% const DAY_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']; %>
+        <% const DAY_SHORT = ['일','월','화','수','목','금','토']; %>
         <% for (const s of slots.filter(s => s.active)) { %>
-          <option value="<%= s.id %>"><%= s.start_time %>–<%= s.end_time %> <%= s.tour_type === 'permanent' ? 'Permanent' : 'Special' %> (<%= s.language.toUpperCase() %>) · <%= s.weekdays.split(',').map(n => DAY_SHORT[Number(n)]).join('/') %></option>
+          <option value="<%= s.id %>"><%= s.start_time %>–<%= s.end_time %> <%= s.tour_type === 'permanent' ? '상설' : '기획' %> (<%= s.language.toUpperCase() %>) · <%= s.weekdays.split(',').map(n => DAY_SHORT[Number(n)]).join('/') %></option>
         <% } %>
       </select></div>
-    <div><button class="btn" type="submit">Mark fully booked</button></div>
+    <div><button class="btn" type="submit">매진으로 표시</button></div>
   </form>
-  <p class="form-hint muted" style="margin-top:6px;">The session must actually run on the chosen date —
-  marks for wrong-weekday or closed dates are rejected.</p>
+  <p class="form-hint muted" style="margin-top:6px;">선택한 날짜에 실제로 운영되는 회차여야 합니다 —
+  요일이 맞지 않거나 휴관일에 대한 표시는 거부됩니다.</p>
 </div>
 
 <%- include('partials/bottom') %>

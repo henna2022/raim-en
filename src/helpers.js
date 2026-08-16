@@ -225,6 +225,9 @@ function maskName(name) {
   return [...trimmed][0] + '•••';
 }
 
+// 공개 예약조회(/booking)는 외국인 방문객용이라 영어를 유지한다. 관리자 페이지는
+// 한국인 직원이 쓰므로 아래 STATUS_BADGE_KO를 쓴다 — 라벨만 다르고 CSS 클래스는
+// 같다. 상태 키(pending 등)와 클래스는 절대 번역하지 않는다(로직·스타일에 쓰인다).
 const STATUS_BADGE = {
   pending: ['Pending review', 'badge-pending'],
   waitlisted: ['Waitlisted', 'badge-waitlisted'],
@@ -235,9 +238,21 @@ const STATUS_BADGE = {
   no_show: ['No-show', 'badge-noshow'],
 };
 
+// 관리자 페이지용 한국어 상태 라벨. 용어는 직원이 이미 보는 곳(README·직원 알림
+// 메일·구글 시트)과 맞춘다: 확정 상태는 '확정', 대기자는 '대기자' 등.
+const STATUS_BADGE_KO = {
+  pending: ['검토 대기', 'badge-pending'],
+  waitlisted: ['대기자', 'badge-waitlisted'],
+  confirmed: ['확정', 'badge-confirmed'],
+  declined: ['거절', 'badge-declined'],
+  cancelled: ['취소', 'badge-cancelled'],
+  attended: ['방문완료', 'badge-attended'],
+  no_show: ['노쇼', 'badge-noshow'],
+};
+
 module.exports = {
   DATE_RE, SLA_HOURS, DEMO_EMAIL_DOMAIN, NOT_DEMO_SQL,
   isValidDateStr, todayStr, nowHM, weekdayOf, addDays,
   closureInfo, sessionsForDate, sessionOrdinal, slotRunsOn, genCode, getEnglishTours,
-  getReservation, getReservationByCode, maskName, STATUS_BADGE, getSettings,
+  getReservation, getReservationByCode, maskName, STATUS_BADGE, STATUS_BADGE_KO, getSettings,
 };

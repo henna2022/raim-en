@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Staff Login — RAIM Admin</title>
+  <title>직원 로그인 — RAIM Admin</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="stylesheet" href="/css/admin.css">
 </head>
@@ -17,15 +17,15 @@
       </svg>
     </div>
     <h1>RAIM Admin</h1>
-    <p class="muted" style="text-align:center;">Staff sign-in for the foreign visitor reservation system.</p>
+    <p class="muted" style="text-align:center;">외국인 방문자 예약 시스템 직원 로그인.</p>
     <% if (error) { %><div class="flash err"><%= error %></div><% } %>
     <form method="POST" action="/admin/login">
       <input type="hidden" name="_csrf" value="<%= csrf %>">
-      <label class="f" for="username">Username</label>
+      <label class="f" for="username">아이디</label>
       <input type="text" id="username" name="username" required autofocus>
-      <label class="f" for="password">Password</label>
+      <label class="f" for="password">비밀번호</label>
       <input type="password" id="password" name="password" required>
-      <button class="btn" type="submit">Sign in</button>
+      <button class="btn" type="submit">로그인</button>
     </form>
   </div>
 </div>

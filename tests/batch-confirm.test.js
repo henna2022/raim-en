@@ -65,7 +65,7 @@ test('B2: batch confirm two same-session requests -> both confirmed, both emaile
   // Follow the redirect: the flash must state the count and be honest about
   // the outbox (SMTP is not configured in tests), never a blanket "sent".
   const html = await (await get(ctx.baseUrl, ctx.jar, res.headers.get('location'))).text();
-  assert.match(html, /Confirmed 2 request\(s\)\./);
+  assert.match(html, /2건 확정했습니다\./);
   assert.match(html, /Outbox/);
 });
 
@@ -105,7 +105,7 @@ test('B6: dashboard groups pending requests per session with batch form + copy b
   const html = await (await get(ctx.baseUrl, ctx.jar, '/admin')).text();
   assert.match(html, /class="res-group/);
   assert.match(html, /action="\/admin\/reservations\/batch-confirm"/);
-  assert.match(html, /Copy for yeyak/);
+  assert.match(html, /yeyak용 복사/);
   assert.match(html, /data-session="[^"]*기획전시/); // special tour, Korean session label for the yeyak copy line
   assert.match(html, new RegExp(resSp.code));
 });
@@ -145,13 +145,13 @@ test('B7: yeyak helper URLs — saved via settings, rendered on dashboard, non-h
   let res = await postAdminForm(ctx.baseUrl, ctx.jar, '/admin/settings', { yeyak_url_special: url });
   assert.equal(res.status, 302);
   let html = await (await get(ctx.baseUrl, ctx.jar, '/admin')).text();
-  assert.match(html, /yeyak service ↗/);
+  assert.match(html, /yeyak 예약 ↗/);
   assert.ok(html.includes('rsv_svc_id=TEST123'));
 
   // A javascript: URL must never render as a link.
   res = await postAdminForm(ctx.baseUrl, ctx.jar, '/admin/settings', { yeyak_url_special: 'javascript:alert(1)' });
   assert.equal(res.status, 302);
   html = await (await get(ctx.baseUrl, ctx.jar, '/admin')).text();
-  assert.ok(!html.includes('yeyak service ↗'));
+  assert.ok(!html.includes('yeyak 예약 ↗'));
   assert.ok(!html.includes('href="javascript:'));
 });

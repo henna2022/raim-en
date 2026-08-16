@@ -97,7 +97,7 @@ test('G5: 60 reservations -> GET /admin/reservations?page=2 -> 200, "Page 2 of 2
     const res = await get(g5.baseUrl, jar, '/admin/reservations?page=2');
     assert.equal(res.status, 200);
     const body = await res.text();
-    assert.match(body, /Page 2 of 2/);
+    assert.match(body, /2 \/ 2 페이지/);
     const rowCount = (body.match(/<td><strong>G5CODE/g) || []).length;
     assert.equal(rowCount, 10);
   } finally {

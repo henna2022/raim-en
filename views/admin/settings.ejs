@@ -1,56 +1,56 @@
-<%- include('partials/top', { title: 'Settings', active: 'settings', staff }) %>
+<%- include('partials/top', { title: '설정', active: 'settings', staff }) %>
 
-<h1>Settings</h1>
-<% if (saved) { %><div class="flash ok">Saved.</div><% } %>
+<h1>설정</h1>
+<% if (saved) { %><div class="flash ok">저장됨.</div><% } %>
 <% if (error) { %><div class="flash err"><%= error %></div><% } %>
 
 <div class="panel">
   <form method="POST" action="/admin/settings" style="max-width:640px;">
     <input type="hidden" name="_csrf" value="<%= csrf %>">
-    <label class="f">Contact email (shown on the site &amp; in emails)</label>
+    <label class="f">담당자 이메일 (사이트 및 이메일에 표시)</label>
     <input type="email" name="contact_email" value="<%= settings.contact_email %>" style="width:100%;">
-    <label class="f">Contact phone</label>
+    <label class="f">담당자 전화번호</label>
     <input type="text" name="contact_phone" value="<%= settings.contact_phone %>" style="width:100%;">
-    <label class="f">Address (English)</label>
+    <label class="f">주소 (영문)</label>
     <input type="text" name="address_en" value="<%= settings.address_en %>" style="width:100%;">
-    <label class="f">Max party size per online request</label>
+    <label class="f">온라인 요청당 최대 인원</label>
     <input type="number" name="max_party_size" value="<%= settings.max_party_size %>" min="1" max="19">
-    <label class="f">Booking window (days ahead)</label>
+    <label class="f">예약 가능 기간(일)</label>
     <input type="number" name="booking_window_days" value="<%= settings.booking_window_days %>" min="1" max="180">
-    <label class="f">Reply-time text shown to visitors</label>
+    <label class="f">방문자에게 표시되는 응답 시간 안내 문구</label>
     <input type="text" name="reply_sla_text" value="<%= settings.reply_sla_text %>" style="width:100%;">
-    <label class="f">Staff notification email (new requests &amp; yeyak releases — empty to disable)</label>
+    <label class="f">직원 알림 이메일 (신규 요청 및 yeyak 오픈 — 비우면 사용 안 함)</label>
     <input type="email" name="staff_notify_email" value="<%= settings.staff_notify_email %>" style="width:100%;">
-    <label class="f">Morning digest hour (KST 0–23 — daily summary of pending / SLA breaches / yeyak releases; empty to disable)</label>
+    <label class="f">아침 다이제스트 시각 (KST 0–23 — 대기 / SLA 위반 / yeyak 오픈 일일 요약; 비우면 사용 안 함)</label>
     <input type="number" name="digest_hour" value="<%= settings.digest_hour %>" min="0" max="23">
-    <label class="f">Personal data retention (days after visit date)</label>
+    <label class="f">개인정보 보존기한 (방문일 이후 일수)</label>
     <input type="number" name="retention_days" value="<%= settings.retention_days %>" min="1" max="3650">
-    <label class="f">No-show record retention (days)</label>
+    <label class="f">노쇼 기록 보존기한(일)</label>
     <input type="number" name="noshow_retention_days" value="<%= settings.noshow_retention_days %>" min="1" max="3650">
 
-    <h2>Yeyak helper links (dashboard)</h2>
-    <p class="muted" style="margin:0 0 6px;">Shown next to each pending group. yeyak opens a fresh
-    service page per month — update the two service URLs when the new month's services go up.
-    Leave empty to hide a link. URLs must start with <code>https://</code>.</p>
-    <label class="f">yeyak service URL — Permanent Exhibition (this month)</label>
+    <h2>yeyak 도우미 링크 (대시보드)</h2>
+    <p class="muted" style="margin:0 0 6px;">각 대기 그룹 옆에 표시됩니다. yeyak은 매달 새로운
+    서비스 페이지를 엽니다 — 새 달의 서비스가 올라오면 두 서비스 URL을 업데이트하세요.
+    비워 두면 링크가 숨겨집니다. URL은 <code>https://</code>로 시작해야 합니다.</p>
+    <label class="f">yeyak 예약 URL — 상설전시(이번 달)</label>
     <input type="text" name="yeyak_url_permanent" value="<%= settings.yeyak_url_permanent %>" style="width:100%;" placeholder="https://yeyak.seoul.go.kr/web/reservation/selectReservView.do?rsv_svc_id=...">
-    <label class="f">yeyak service URL — Special Exhibition (this month)</label>
+    <label class="f">yeyak 예약 URL — 기획전시(이번 달)</label>
     <input type="text" name="yeyak_url_special" value="<%= settings.yeyak_url_special %>" style="width:100%;" placeholder="https://yeyak.seoul.go.kr/web/reservation/selectReservView.do?rsv_svc_id=...">
-    <label class="f">yeyak admin console URL (관리자시스템 — optional)</label>
+    <label class="f">yeyak 관리자 URL (관리자시스템 — 선택)</label>
     <input type="text" name="yeyak_admin_url" value="<%= settings.yeyak_admin_url %>" style="width:100%;" placeholder="https://...">
 
-    <br><button class="btn" type="submit" style="margin-top:16px;">Save settings</button>
+    <br><button class="btn" type="submit" style="margin-top:16px;">설정 저장</button>
   </form>
 </div>
 
 <div class="panel">
-  <h2 style="margin-top:0;">Email delivery</h2>
+  <h2 style="margin-top:0;">이메일 발송</h2>
   <% if (smtpConfigured) { %>
-    <p>SMTP is configured — emails are sent for real (and logged under <a href="/admin/emails">Emails</a>).</p>
+    <p>SMTP가 설정되어 있습니다 — 이메일이 실제로 발송됩니다 (그리고 <a href="/admin/emails">이메일</a>에 기록됩니다).</p>
   <% } else { %>
-    <p>SMTP is <strong>not configured</strong>. Emails are stored in the <a href="/admin/emails">Outbox</a> for preview only.</p>
-    <p class="muted">To send real mail, set these environment variables before starting the server:<br>
-    <code>SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM</code> (see README.md).</p>
+    <p>SMTP가 <strong>설정되지 않았습니다</strong>. 이메일은 미리 보기용으로 <a href="/admin/emails">발신함</a>에 저장됩니다.</p>
+    <p class="muted">실제 메일을 보내려면 서버를 시작하기 전에 다음 환경 변수를 설정하세요:<br>
+    <code>SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM</code> (README.md 참조).</p>
   <% } %>
 </div>
 

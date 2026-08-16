@@ -1,78 +1,78 @@
 <% /* expects: r (reservation row) */ %>
 <% if (r.status === 'pending') { %>
   <details class="inline-edit">
-    <summary>Confirm / waitlist / decline</summary>
+    <summary>확정 / 대기자 / 거절</summary>
     <form method="POST" action="/admin/reservations/<%= r.id %>/confirm" class="confirm-box">
       <input type="hidden" name="_csrf" value="<%= csrf %>">
       <label style="display:flex;gap:8px;align-items:flex-start;">
         <input type="checkbox" name="yeyak_blocked" required>
-        <span>I have <strong>blocked <%= r.party_size %> seat(s)</strong> for this session in the
-        Seoul Public Service Reservation (yeyak) admin.</span>
+        <span>이 회차 <strong>좌석 <%= r.party_size %>석</strong>을 서울시 공공서비스예약(yeyak)
+        관리자 예약에서 차단했습니다.</span>
       </label>
-      <button class="btn sm green" type="submit" style="margin-top:8px;">Confirm &amp; email visitor</button>
+      <button class="btn sm green" type="submit" style="margin-top:8px;">확정 · 방문자 메일</button>
     </form>
     <form method="POST" action="/admin/reservations/<%= r.id %>/waitlist" class="waitlist-box">
       <input type="hidden" name="_csrf" value="<%= csrf %>">
-      <p style="margin:0;"><strong>Session full for this party?</strong> Put the request on the
-      <strong>waitlist</strong> instead of declining — the visitor is emailed and can be promoted
-      later if seats free up.</p>
+      <p style="margin:0;"><strong>이 인원으로는 회차가 만석인가요?</strong> 거절하는 대신 요청을
+      <strong>대기자</strong> 명단에 올리세요 — 방문자에게 메일이 발송되고, 이후 좌석이 나면
+      승격할 수 있습니다.</p>
       <label style="display:flex;gap:8px;align-items:flex-start;margin-top:8px;">
         <input type="checkbox" name="mark_soldout">
-        <span>Also mark this session as <strong>fully booked</strong> for <%= r.visit_date %> — only when
-        NO party size fits anymore; smaller groups may still fit. The booking form stops offering it
-        (undo under Schedule).</span>
+        <span>이 회차를 <%= r.visit_date %>에 <strong>매진</strong>으로 표시 — 어떤 인원도 더 이상
+        들어갈 수 없을 때만 사용하세요. 소규모 그룹은 아직 가능할 수 있습니다. 예약 폼에서 더 이상
+        노출되지 않습니다 (일정에서 되돌리기).</span>
       </label>
-      <button class="btn sm" type="submit" style="margin-top:8px;">Waitlist &amp; email visitor</button>
+      <button class="btn sm" type="submit" style="margin-top:8px;">대기자 등록 · 방문자 메일</button>
     </form>
     <form method="POST" action="/admin/reservations/<%= r.id %>/decline" class="decline-box">
       <input type="hidden" name="_csrf" value="<%= csrf %>">
-      <input type="text" name="decline_reason" placeholder="Reason shown to visitor (e.g. session fully booked)" style="width:100%;">
+      <input type="text" name="decline_reason" placeholder="방문자에게 보일 사유 (예: 해당 회차 매진)" style="width:100%;">
       <label style="display:flex;gap:8px;align-items:flex-start;margin-top:8px;">
         <input type="checkbox" name="mark_soldout">
-        <span>Also mark this session as <strong>fully booked</strong> for <%= r.visit_date %> —
-        the booking form stops offering it (undo under Schedule).</span>
+        <span>이 회차를 <%= r.visit_date %>에 <strong>매진</strong>으로 표시 —
+        예약 폼에서 더 이상 노출되지 않습니다 (일정에서 되돌리기).</span>
       </label>
-      <button class="btn sm red" type="submit" style="margin-top:8px;">Decline &amp; email visitor</button>
+      <button class="btn sm red" type="submit" style="margin-top:8px;">거절 · 방문자 메일</button>
     </form>
   </details>
 <% } else if (r.status === 'waitlisted') { %>
   <details class="inline-edit">
-    <summary>Promote / decline</summary>
+    <summary>승격 / 거절</summary>
     <form method="POST" action="/admin/reservations/<%= r.id %>/confirm" class="confirm-box">
       <input type="hidden" name="_csrf" value="<%= csrf %>">
       <label style="display:flex;gap:8px;align-items:flex-start;">
         <input type="checkbox" name="yeyak_blocked" required>
-        <span>Seats freed up — <strong><%= r.party_size %> seat(s) are blocked</strong> for this session in the
-        yeyak admin (kept from a cancellation, or newly blocked). If more seats remain free, also remove
-        the session's sold-out mark under Schedule.</span>
+        <span>좌석이 확보됨 — 이 회차에 대해 yeyak 관리자 예약에서 <strong><%= r.party_size %>석이 차단</strong>되어
+        있습니다 (취소분을 유지했거나 새로 차단). 좌석이 더 남아 있다면 일정에서 해당 회차의
+        매진 표시도 해제하세요.</span>
       </label>
-      <button class="btn sm green" type="submit" style="margin-top:8px;">Confirm &amp; email visitor</button>
+      <button class="btn sm green" type="submit" style="margin-top:8px;">확정 · 방문자 메일</button>
     </form>
     <form method="POST" action="/admin/reservations/<%= r.id %>/decline" class="decline-box">
       <input type="hidden" name="_csrf" value="<%= csrf %>">
-      <input type="text" name="decline_reason" placeholder="Reason shown to visitor (e.g. no seats freed up before the visit date)" style="width:100%;">
-      <button class="btn sm red" type="submit" style="margin-top:8px;">Decline &amp; email visitor</button>
+      <input type="text" name="decline_reason" placeholder="방문자에게 보일 사유 (예: 방문일까지 좌석이 나지 않음)" style="width:100%;">
+      <button class="btn sm red" type="submit" style="margin-top:8px;">거절 · 방문자 메일</button>
     </form>
     <form method="POST" action="/admin/reservations/<%= r.id %>/reopen" style="margin-top:8px;">
       <input type="hidden" name="_csrf" value="<%= csrf %>">
-      <button class="btn sm outline" type="submit">Back to pending</button>
+      <button class="btn sm outline" type="submit">검토 대기로 되돌리기</button>
     </form>
   </details>
 <% } else if (r.status === 'confirmed') { %>
   <details class="inline-edit">
-    <summary>Update</summary>
+    <summary>처리</summary>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
-      <form method="POST" action="/admin/reservations/<%= r.id %>/attended"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm" type="submit">Attended</button></form>
-      <form method="POST" action="/admin/reservations/<%= r.id %>/no_show"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm gray" type="submit">No-show</button></form>
+      <form method="POST" action="/admin/reservations/<%= r.id %>/attended"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm" type="submit">방문완료</button></form>
+      <form method="POST" action="/admin/reservations/<%= r.id %>/no_show"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm gray" type="submit">노쇼</button></form>
       <form method="POST" action="/admin/reservations/<%= r.id %>/cancel"
-            onsubmit="return confirm('Cancel this reservation and email the visitor?');">
+            onsubmit="return confirm('이 예약을 취소하고 방문자에게 메일을 보낼까요?');">
         <input type="hidden" name="_csrf" value="<%= csrf %>">
-        <button class="btn sm red" type="submit">Cancel</button></form>
+        <button class="btn sm red" type="submit">취소</button></form>
     </div>
   </details>
 <% } else { %>
   <form method="POST" action="/admin/reservations/<%= r.id %>/reopen" style="margin-top:4px;">
     <input type="hidden" name="_csrf" value="<%= csrf %>">
-    <button class="btn sm outline" type="submit">Reopen as pending</button>
+    <button class="btn sm outline" type="submit">검토 대기로 재개</button>
   </form>
 <% } %>

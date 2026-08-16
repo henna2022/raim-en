@@ -1,27 +1,27 @@
 <!doctype html>
-<html lang="en">
+<html lang="ko">
 <head>
   <meta charset="utf-8">
-  <title>Desk list — <%= date %></title>
+  <title>데스크 명단 — <%= date %></title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="stylesheet" href="/css/admin.css">
 </head>
 <body>
 <div class="wrap">
   <div class="noprint" style="margin-bottom:14px;">
-    <button class="btn" onclick="window.print()">Print</button>
-    <a class="btn gray" href="/admin">Back to dashboard</a>
+    <button class="btn" onclick="window.print()">인쇄</button>
+    <a class="btn gray" href="/admin">대시보드로 돌아가기</a>
   </div>
-  <h1>Foreign visitor reservations — <%= date %></h1>
-  <p class="muted">Seoul Robot &amp; AI Museum · 1F information desk check-in list</p>
+  <h1>외국인 방문객 예약 — <%= date %></h1>
+  <p class="muted">서울로봇인공지능과학관 · 1층 안내데스크 체크인 명단</p>
   <div class="panel">
-    <% if (rows.length === 0) { %><p>No confirmed reservations on this date.</p><% } else { %>
+    <% if (rows.length === 0) { %><p>이 날짜에 확정된 예약이 없습니다.</p><% } else { %>
     <table>
-      <tr><th>Time</th><th>Session</th><th>Code</th><th>Name</th><th>Party</th><th>Status</th><th>Checked in</th></tr>
+      <tr><th>시간</th><th>회차</th><th>코드</th><th>이름</th><th>인원</th><th>상태</th><th>체크인</th></tr>
       <% for (const r of rows) { const [label] = STATUS_BADGE[r.status] || [r.status]; %>
         <tr>
           <td><strong><%= r.start_time %></strong></td>
-          <td><%= r.tour_type === 'permanent' ? 'Permanent' : 'Special' %> (<%= r.language.toUpperCase() %>)</td>
+          <td><%= r.tour_type === 'permanent' ? '상설' : '기획' %> (<%= r.language.toUpperCase() %>)</td>
           <td><%= r.code %></td>
           <td><%= r.name %></td>
           <td><%= r.party_size %></td>

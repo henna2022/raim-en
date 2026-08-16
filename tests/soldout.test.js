@@ -68,7 +68,7 @@ test('SO2: POST /reserve for a sold-out session -> 400, no reservation created',
 test('SO3: dashboard group for a sold-out session shows the SOLD OUT badge', async () => {
   // res2 is still pending in the flagged session.
   const html = await (await get(ctx.baseUrl, ctx.jar, '/admin')).text();
-  assert.match(html, /SOLD OUT/);
+  assert.match(html, /매진/);
   assert.match(html, new RegExp(res2.code));
 });
 

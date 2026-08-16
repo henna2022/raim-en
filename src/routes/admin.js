@@ -2,7 +2,7 @@
 const express = require('express');
 const { db, hashPassword, verifyPassword, setSetting } = require('../db');
 const {
-  DATE_RE, SLA_HOURS, isValidDateStr, todayStr, addDays, weekdayOf, closureInfo, sessionsForDate, getReservation, STATUS_BADGE, getSettings,
+  DATE_RE, SLA_HOURS, isValidDateStr, todayStr, addDays, weekdayOf, closureInfo, sessionsForDate, getReservation, STATUS_BADGE, STATUS_BADGE_KO, getSettings,
 } = require('../helpers');
 const holidays = require('../holidays');
 const mailer = require('../mailer');
@@ -19,13 +19,13 @@ function requireLogin(req, res, next) {
 }
 function requireAdmin(req, res, next) {
   if (req.session.staff && req.session.staff.role === 'admin') return next();
-  res.status(403).render('admin/error', { staff: req.session.staff, message: 'Admin role required.' });
+  res.status(403).render('admin/error', { staff: req.session.staff, message: '관리자 권한이 필요합니다.' });
 }
 
 // Same wording for both IP-level and account-level lockout so a client can't
 // tell the two apart (and, for account lockout, can't tell "wrong password"
 // from "this username exists and is locked").
-const LOCKOUT_MESSAGE = 'Too many attempts. Try again later.';
+const LOCKOUT_MESSAGE = '시도 횟수가 너무 많습니다. 잠시 후 다시 시도하세요.';
 
 // IP-based brute-force guard, reusing P0-1's in-memory limiter.
 const loginIpLimiter = rateLimit({
@@ -83,7 +83,7 @@ router.post('/login', loginIpLimiter, async (req, res) => {
     console.warn('[auth] failed login', { username, ip });
     await new Promise(r => setTimeout(r, LOGIN_FAIL_DELAY_MS));
     if (justLocked) return res.status(429).render('admin/login', { error: LOCKOUT_MESSAGE });
-    return res.status(401).render('admin/login', { error: 'Invalid username or password.' });
+    return res.status(401).render('admin/login', { error: '아이디 또는 비밀번호가 올바르지 않습니다.' });
   }
 
   loginAttempts.delete(username);
@@ -199,7 +199,8 @@ router.get('/', (req, res) => {
     staff: req.session.staff, pending, pendingGroups: groupPending(pending),
     todays, releaseQueue, waitlist, today, batchDone,
     lateCount: pending.filter(p => p.age.late).length, slaHours: SLA_HOURS,
-    smtpConfigured: mailer.smtpConfigured, STATUS_BADGE, settings: getSettings(),
+    // 관리자 화면은 한국어 상태 라벨을 쓴다(공개 /booking은 영어 STATUS_BADGE 유지).
+    smtpConfigured: mailer.smtpConfigured, STATUS_BADGE: STATUS_BADGE_KO, settings: getSettings(),
   });
 });
 
@@ -234,7 +235,8 @@ router.get('/reservations', (req, res) => {
              ORDER BY r.visit_date DESC, s.start_time, r.created_at DESC LIMIT ? OFFSET ?`;
   const rows = db.prepare(sql).all(...params, RESERVATIONS_PAGE_SIZE, offset);
   res.render('admin/reservations', {
-    staff: req.session.staff, rows, status, date, q, page, totalPages, total, STATUS_BADGE,
+    // 필터·배지 라벨을 한국어로 (상태 키는 그대로 — STATUS_BADGE_KO도 같은 키를 쓴다).
+    staff: req.session.staff, rows, status, date, q, page, totalPages, total, STATUS_BADGE: STATUS_BADGE_KO,
   });
 });
 
@@ -263,7 +265,7 @@ router.get('/reservations.csv', (req, res) => {
 router.post('/reservations/:id/released', (req, res) => {
   const r = getReservation(Number(req.params.id));
   if (!r || !r.release_needed) {
-    return res.status(400).render('admin/error', { staff: req.session.staff, message: 'This reservation is not waiting for a yeyak release.' });
+    return res.status(400).render('admin/error', { staff: req.session.staff, message: 'yeyak 좌석 해제 대기 상태의 예약이 아닙니다.' });
   }
   db.prepare(`UPDATE reservations SET release_needed=0, released_at=datetime('now'), released_by=? WHERE id=?`)
     .run(req.session.staff.username, r.id);
@@ -280,20 +282,20 @@ router.post('/reservations/:id/released', (req, res) => {
 router.post('/reservations/batch-confirm', async (req, res) => {
   const fail = (message) => res.status(400).render('admin/error', { staff: req.session.staff, message });
   if (req.body.yeyak_blocked !== 'on') {
-    return fail('Please tick the checkbox confirming you have blocked these seats in the Seoul Public Service Reservation (yeyak) admin first.');
+    return fail('먼저 서울시 공공서비스예약(yeyak) 관리자 예약에서 좌석을 차단했다는 체크박스를 선택하세요.');
   }
   const ids = [...new Set([].concat(req.body.ids || [])
     .map(v => Number.parseInt(v, 10))
     .filter(n => Number.isInteger(n) && n > 0))];
   if (ids.length === 0 || ids.length > 100) {
-    return fail('Select at least one request to confirm.');
+    return fail('확정할 신청을 하나 이상 선택하세요.');
   }
 
   const rows = ids.map(id => getReservation(id)).filter(Boolean);
-  if (rows.length !== ids.length) return fail('One of the selected requests no longer exists.');
+  if (rows.length !== ids.length) return fail('선택한 신청 중 하나가 더 이상 존재하지 않습니다.');
   const sameSession = rows.every(r =>
     r.visit_date === rows[0].visit_date && r.slot_id === rows[0].slot_id);
-  if (!sameSession) return fail('Batch confirm only works within a single session. Please reload the dashboard.');
+  if (!sameSession) return fail('일괄 확정은 같은 회차 안에서만 됩니다. 대시보드를 새로고침하세요.');
 
   // applyDecision's UPDATE carries the observed status in its WHERE, so a row
   // that changed between page render and submit is skipped, never
@@ -321,12 +323,12 @@ router.post('/reservations/:id/:action', async (req, res) => {
   const r = getReservation(Number(req.params.id));
   const t = TRANSITIONS[req.params.action];
   if (!r || !t || !t.from.includes(r.status)) {
-    return res.status(400).render('admin/error', { staff: req.session.staff, message: 'Invalid action for this reservation.' });
+    return res.status(400).render('admin/error', { staff: req.session.staff, message: '이 예약에 적용할 수 없는 작업입니다.' });
   }
   if (req.params.action === 'confirm' && req.body.yeyak_blocked !== 'on') {
     return res.status(400).render('admin/error', {
       staff: req.session.staff,
-      message: 'Please tick the checkbox confirming you have blocked these seats in the Seoul Public Service Reservation (yeyak) admin first.',
+      message: '먼저 서울시 공공서비스예약(yeyak) 관리자 예약에서 좌석을 차단했다는 체크박스를 선택하세요.',
     });
   }
   const declineReason = String(req.body.decline_reason || '').trim().slice(0, 300);
@@ -336,7 +338,7 @@ router.post('/reservations/:id/:action', async (req, res) => {
   if (!result.applied) {
     return res.status(409).render('admin/error', {
       staff: req.session.staff,
-      message: 'This reservation changed while the page was open. Reload and try again.',
+      message: '페이지를 열어 둔 사이에 이 예약의 상태가 바뀌었습니다. 새로고침 후 다시 시도하세요.',
     });
   }
   if (['decline', 'waitlist'].includes(req.params.action) && req.body.mark_soldout === 'on') {
@@ -352,7 +354,7 @@ router.post('/reservations/:id/:action', async (req, res) => {
 // ---------- printable day list ----------
 router.get('/day/:date/print', (req, res) => {
   const date = req.params.date;
-  if (!DATE_RE.test(date)) return res.status(400).send('Bad date');
+  if (!DATE_RE.test(date)) return res.status(400).send('잘못된 날짜');
   const rows = db.prepare(`
     SELECT r.*, s.tour_type, s.start_time, s.end_time, s.language
     FROM reservations r JOIN slots s ON s.id = r.slot_id
@@ -407,7 +409,7 @@ function parseSlotForm(b) {
 router.post('/schedule/slots', (req, res) => {
   const s = parseSlotForm(req.body);
   if (!TIME_RE.test(s.start_time) || !TIME_RE.test(s.end_time) || !s.weekdays || !s.label) {
-    return res.redirect('/admin/schedule?error=' + encodeURIComponent('Slot needs label, HH:MM times and at least one weekday.'));
+    return res.redirect('/admin/schedule?error=' + encodeURIComponent('회차에는 이름, HH:MM 형식의 시간, 요일 하나 이상이 필요합니다.'));
   }
   db.prepare('INSERT INTO slots (tour_type, start_time, end_time, language, weekdays, label, active) VALUES (?,?,?,?,?,?,?)')
     .run(s.tour_type, s.start_time, s.end_time, s.language, s.weekdays, s.label, s.active);
@@ -430,7 +432,7 @@ router.post('/schedule/slots/:id', (req, res) => {
   }
   const s = parseSlotForm(req.body);
   if (!TIME_RE.test(s.start_time) || !TIME_RE.test(s.end_time) || !s.weekdays || !s.label) {
-    return res.redirect('/admin/schedule?error=' + encodeURIComponent('Slot needs label, HH:MM times and at least one weekday.'));
+    return res.redirect('/admin/schedule?error=' + encodeURIComponent('회차에는 이름, HH:MM 형식의 시간, 요일 하나 이상이 필요합니다.'));
   }
   db.prepare('UPDATE slots SET tour_type=?, start_time=?, end_time=?, language=?, weekdays=?, label=?, active=? WHERE id=?')
     .run(s.tour_type, s.start_time, s.end_time, s.language, s.weekdays, s.label, s.active, id);
@@ -441,7 +443,7 @@ router.post('/schedule/closures', (req, res) => {
   const date = String(req.body.date || '').trim();
   const kind = req.body.kind === 'open' ? 'open' : 'closed';
   const reason = String(req.body.reason || '').trim().slice(0, 200);
-  if (!isValidDateStr(date)) return res.redirect('/admin/schedule?error=' + encodeURIComponent('Pick a valid date.'));
+  if (!isValidDateStr(date)) return res.redirect('/admin/schedule?error=' + encodeURIComponent('올바른 날짜를 선택하세요.'));
   db.prepare(`INSERT INTO closures (date, kind, reason) VALUES (?,?,?)
               ON CONFLICT(date) DO UPDATE SET kind=excluded.kind, reason=excluded.reason`).run(date, kind, reason);
   res.redirect('/admin/schedule?saved=1');
@@ -457,14 +459,14 @@ router.post('/schedule/soldout', (req, res) => {
   const date = String(req.body.date || '').trim();
   const slotId = Number.parseInt(req.body.slot_id, 10);
   const err = (msg) => res.redirect('/admin/schedule?error=' + encodeURIComponent(msg));
-  if (!isValidDateStr(date)) return err('Pick a valid date.');
-  if (date < todayStr()) return err('Sold-out marks can only be set for today or future dates.');
+  if (!isValidDateStr(date)) return err('올바른 날짜를 선택하세요.');
+  if (date < todayStr()) return err('매진 표시는 오늘 이후 날짜에만 설정할 수 있습니다.');
   // The (date, session) pair must be one the booking form actually offers —
   // a mark on a wrong-weekday/inactive slot or a closed date would save
   // "successfully" but never block anything (silent no-op).
   const day = sessionsForDate(date);
   if (day.closed || !day.sessions.some(s => s.id === slotId)) {
-    return err('That session does not run on that date, so it cannot be marked sold out.');
+    return err('그 날짜에는 해당 회차가 운영되지 않아 매진으로 표시할 수 없습니다.');
   }
   db.prepare(`INSERT INTO soldout (date, slot_id, created_by) VALUES (?,?,?)
               ON CONFLICT(date, slot_id) DO NOTHING`).run(date, slotId, req.session.staff.username);
@@ -516,10 +518,10 @@ router.post('/staff', requireAdmin, (req, res) => {
   const password = String(req.body.password || '');
   const role = req.body.role === 'admin' ? 'admin' : 'staff';
   if (!/^[a-zA-Z0-9._-]{3,}$/.test(username) || !name || password.length < 8) {
-    return res.redirect('/admin/staff?error=' + encodeURIComponent('Username (3+ chars), name and password (8+ chars) are required.'));
+    return res.redirect('/admin/staff?error=' + encodeURIComponent('아이디(3자 이상), 이름, 비밀번호(8자 이상)가 필요합니다.'));
   }
   if (db.prepare('SELECT 1 FROM staff WHERE username = ?').get(username)) {
-    return res.redirect('/admin/staff?error=' + encodeURIComponent('That username already exists.'));
+    return res.redirect('/admin/staff?error=' + encodeURIComponent('이미 존재하는 아이디입니다.'));
   }
   const { salt, hash } = hashPassword(password);
   db.prepare('INSERT INTO staff (username, name, role, pw_salt, pw_hash) VALUES (?,?,?,?,?)').run(username, name, role, salt, hash);
@@ -528,7 +530,7 @@ router.post('/staff', requireAdmin, (req, res) => {
 router.post('/staff/:id/delete', requireAdmin, (req, res) => {
   const id = Number(req.params.id);
   if (id === req.session.staff.id) {
-    return res.redirect('/admin/staff?error=' + encodeURIComponent('You cannot delete your own account.'));
+    return res.redirect('/admin/staff?error=' + encodeURIComponent('본인 계정은 삭제할 수 없습니다.'));
   }
   db.prepare('DELETE FROM staff WHERE id = ?').run(id);
   res.redirect('/admin/staff?saved=1');
@@ -536,7 +538,7 @@ router.post('/staff/:id/delete', requireAdmin, (req, res) => {
 router.post('/staff/:id/password', requireAdmin, (req, res) => {
   const id = Number(req.params.id);
   const password = String(req.body.password || '');
-  if (password.length < 8) return res.redirect('/admin/staff?error=' + encodeURIComponent('Password must be 8+ characters.'));
+  if (password.length < 8) return res.redirect('/admin/staff?error=' + encodeURIComponent('비밀번호는 8자 이상이어야 합니다.'));
   const { salt, hash } = hashPassword(password);
   db.prepare('UPDATE staff SET pw_salt=?, pw_hash=? WHERE id=?').run(salt, hash, id);
   res.redirect('/admin/staff?saved=1');
@@ -581,7 +583,7 @@ router.post('/settings', requireAdmin, (req, res) => {
     setSetting(k, raw);
   }
   const q = rejected.length
-    ? '?error=' + encodeURIComponent(`Ignored out-of-range value(s): ${rejected.join(', ')}. Other settings were saved.`)
+    ? '?error=' + encodeURIComponent(`허용 범위를 벗어난 값은 무시했습니다: ${rejected.join(', ')}. 나머지 설정은 저장되었습니다.`)
     : '?saved=1';
   res.redirect('/admin/settings' + q);
 });
@@ -596,7 +598,7 @@ router.get('/emails', (req, res) => {
 });
 router.get('/emails/:id', (req, res) => {
   const row = db.prepare('SELECT html FROM email_log WHERE id = ?').get(Number(req.params.id));
-  if (!row) return res.status(404).send('Not found');
+  if (!row) return res.status(404).send('찾을 수 없습니다');
   res.send(row.html);
 });
 // 재발송 — 저장된 스냅샷을 그대로 다시 보낸다. sendMail을 거치므로 새 email_log
@@ -607,7 +609,7 @@ router.get('/emails/:id', (req, res) => {
 //     그래서 버튼 옆 Preview로 내용을 확인하고 보내는 흐름을 전제로 한다.
 router.post('/emails/:id/resend', async (req, res) => {
   const row = db.prepare('SELECT to_addr, subject, html FROM email_log WHERE id = ?').get(Number(req.params.id));
-  if (!row) return res.status(404).send('Not found');
+  if (!row) return res.status(404).send('찾을 수 없습니다');
   const result = await mailer.sendMail(row.to_addr, row.subject, row.html);
   // 주소는 URL에 싣지 않는다 — 결과는 목록 맨 위의 새 행으로 확인한다.
   res.redirect(`/admin/emails?resent=1&ok=${result.sent ? 1 : 0}`);

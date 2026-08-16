@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="ko">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -11,19 +11,19 @@
 <div class="topbar">
   <span class="brand">RAIM ADMIN</span>
   <nav>
-    <a href="/admin" class="<%= active === 'dashboard' ? 'on' : '' %>">Dashboard</a>
-    <a href="/admin/reservations" class="<%= active === 'reservations' ? 'on' : '' %>">Reservations</a>
-    <a href="/admin/schedule" class="<%= active === 'schedule' ? 'on' : '' %>">Schedule</a>
-    <a href="/admin/notices" class="<%= active === 'notices' ? 'on' : '' %>">Notices</a>
-    <a href="/admin/emails" class="<%= active === 'emails' ? 'on' : '' %>">Emails</a>
+    <a href="/admin" class="<%= active === 'dashboard' ? 'on' : '' %>">대시보드</a>
+    <a href="/admin/reservations" class="<%= active === 'reservations' ? 'on' : '' %>">예약</a>
+    <a href="/admin/schedule" class="<%= active === 'schedule' ? 'on' : '' %>">일정</a>
+    <a href="/admin/notices" class="<%= active === 'notices' ? 'on' : '' %>">공지</a>
+    <a href="/admin/emails" class="<%= active === 'emails' ? 'on' : '' %>">메일</a>
     <% if (staff && staff.role === 'admin') { %>
-      <a href="/admin/staff" class="<%= active === 'staff' ? 'on' : '' %>">Staff</a>
-      <a href="/admin/settings" class="<%= active === 'settings' ? 'on' : '' %>">Settings</a>
+      <a href="/admin/staff" class="<%= active === 'staff' ? 'on' : '' %>">직원</a>
+      <a href="/admin/settings" class="<%= active === 'settings' ? 'on' : '' %>">설정</a>
     <% } %>
   </nav>
   <span class="who">
-    <%= staff ? staff.name + ' (' + staff.role + ')' : '' %>
-    <form method="POST" action="/admin/logout" style="display:inline;"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="linky" type="submit">Log out</button></form>
+    <%= staff ? staff.name + ' (' + (staff.role === 'admin' ? '관리자' : '직원') + ')' : '' %>
+    <form method="POST" action="/admin/logout" style="display:inline;"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="linky" type="submit">로그아웃</button></form>
   </span>
 </div>
 <div class="wrap">

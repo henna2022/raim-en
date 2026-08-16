@@ -1,48 +1,48 @@
-<%- include('partials/top', { title: 'Reservations', active: 'reservations', staff }) %>
+<%- include('partials/top', { title: '예약', active: 'reservations', staff }) %>
 
-<h1>Reservations</h1>
+<h1>예약</h1>
 
 <div class="panel">
   <form method="GET" action="/admin/reservations" class="row">
     <div>
-      <label class="f">Status</label>
+      <label class="f">상태</label>
       <select name="status">
-        <option value="">All</option>
+        <option value="">전체</option>
         <% for (const [key, [label]] of Object.entries(STATUS_BADGE)) { %>
           <option value="<%= key %>" <%= status === key ? 'selected' : '' %>><%= label %></option>
         <% } %>
       </select>
     </div>
     <div>
-      <label class="f">Visit date</label>
+      <label class="f">방문일</label>
       <input type="date" name="date" value="<%= date %>">
     </div>
     <div>
-      <label class="f">Search</label>
-      <input type="text" name="q" value="<%= q %>" placeholder="Name, email or code">
+      <label class="f">검색</label>
+      <input type="text" name="q" value="<%= q %>" placeholder="이름·이메일·코드">
     </div>
-    <div><button class="btn" type="submit">Filter</button></div>
-    <div><a class="btn gray" href="/admin/reservations">Reset</a></div>
-    <div style="margin-left:auto;"><a class="btn outline" href="/admin/reservations.csv">Export all (CSV)</a></div>
-    <% if (date) { %><div><a class="btn gray" href="/admin/day/<%= date %>/print" target="_blank">Print desk list</a></div><% } %>
+    <div><button class="btn" type="submit">필터</button></div>
+    <div><a class="btn gray" href="/admin/reservations">초기화</a></div>
+    <div style="margin-left:auto;"><a class="btn outline" href="/admin/reservations.csv">전체 내보내기(CSV)</a></div>
+    <% if (date) { %><div><a class="btn gray" href="/admin/day/<%= date %>/print" target="_blank">데스크 명단 인쇄</a></div><% } %>
   </form>
 </div>
 
 <div class="panel">
-  <% if (rows.length === 0) { %><p class="muted">No reservations match this filter.</p><% } else { %>
+  <% if (rows.length === 0) { %><p class="muted">조건에 맞는 예약이 없습니다.</p><% } else { %>
   <table>
-    <tr><th>Code</th><th>Visit</th><th>Session</th><th>Visitor</th><th>Party</th><th>Status</th><th>Decided</th><th>Actions</th></tr>
+    <tr><th>코드</th><th>방문일</th><th>회차</th><th>방문자</th><th>인원</th><th>상태</th><th>처리 내역</th><th>처리</th></tr>
     <%# Unknown status (e.g. after a rollback past the commit that added it) must
         render, not 500 the whole list. %>
     <% for (const r of rows) { const [label, cls] = STATUS_BADGE[r.status] || [r.status, 'badge-pending']; %>
       <tr>
         <td><strong><%= r.code %></strong></td>
         <td><%= r.visit_date %><br><span class="muted"><%= r.start_time %>–<%= r.end_time %></span></td>
-        <td><%= r.tour_type === 'permanent' ? 'Permanent' : 'Special' %>
+        <td><%= r.tour_type === 'permanent' ? '상설' : '기획' %>
             <span class="badge badge-<%= r.language %>"><%= r.language.toUpperCase() %></span></td>
         <td><%= r.name %><br><span class="muted"><%= r.email %><%= r.country ? ' · ' + r.country : '' %></span>
-            <% if (r.noshow_count > 0) { %><br><span class="badge badge-noshow">No-shows: <%= r.noshow_count %></span><% } %>
-            <% if (r.notes) { %><br><span class="muted">Note: <%= r.notes %></span><% } %></td>
+            <% if (r.noshow_count > 0) { %><br><span class="badge badge-noshow">노쇼: <%= r.noshow_count %>회</span><% } %>
+            <% if (r.notes) { %><br><span class="muted">메모: <%= r.notes %></span><% } %></td>
         <td><%= r.party_size %></td>
         <td><span class="badge <%= cls %>"><%= label %></span>
             <% if (r.status === 'declined' && r.decline_reason) { %><br><span class="muted"><%= r.decline_reason %></span><% } %></td>
@@ -60,9 +60,9 @@
        return '/admin/reservations?' + params.toString();
      } %>
   <div class="row" style="margin-top:14px;align-items:center;">
-    <% if (page > 1) { %><a class="btn gray" href="<%= pageLink(page - 1) %>">Prev</a><% } %>
-    <span class="muted">Page <%= page %> of <%= totalPages %></span>
-    <% if (page < totalPages) { %><a class="btn gray" href="<%= pageLink(page + 1) %>">Next</a><% } %>
+    <% if (page > 1) { %><a class="btn gray" href="<%= pageLink(page - 1) %>">이전</a><% } %>
+    <span class="muted"><%= page %> / <%= totalPages %> 페이지</span>
+    <% if (page < totalPages) { %><a class="btn gray" href="<%= pageLink(page + 1) %>">다음</a><% } %>
   </div>
   <% } %>
 </div>
