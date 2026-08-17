@@ -37,7 +37,7 @@
     <input type="date" id="date" name="date" required
            min="<%= today %>" max="<%= maxDate %>" value="<%= form.date || '' %>">
     <p class="form-hint">
-      Bookings open up to <%= settings.booking_window_days %> days ahead. The museum is closed on Mondays.</p>
+      You can book this month; next month opens on the <%= settings.booking_open_day %>th. The museum is closed on Mondays.</p>
 
     <h2 style="margin-top:26px;"><span class="stepnum">2</span> Choose a session</h2>
     <div id="sessionArea">

@@ -15,8 +15,8 @@
     <input type="text" name="address_en" value="<%= settings.address_en %>" style="width:100%;">
     <label class="f">온라인 요청당 최대 인원</label>
     <input type="number" name="max_party_size" value="<%= settings.max_party_size %>" min="1" max="19">
-    <label class="f">예약 가능 기간(일)</label>
-    <input type="number" name="booking_window_days" value="<%= settings.booking_window_days %>" min="1" max="180">
+    <label class="f">예약 오픈일 (매달 이 날짜에 다음 달 전체가 열림 — 예: 10 → 8/10에 9월 오픈)</label>
+    <input type="number" name="booking_open_day" value="<%= settings.booking_open_day %>" min="1" max="28">
     <label class="f">방문자에게 표시되는 응답 시간 안내 문구</label>
     <input type="text" name="reply_sla_text" value="<%= settings.reply_sla_text %>" style="width:100%;">
     <label class="f">직원 알림 이메일 (신규 요청 및 예약 오픈 — 비우면 사용 안 함)</label>

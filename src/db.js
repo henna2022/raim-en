@@ -240,6 +240,10 @@ function seed() {
     contact_phone: '+82-2-920-4300',
     address_en: '56, Madeul-ro 13-gil, Dobong-gu, Seoul, Republic of Korea',
     max_party_size: '5',
+    // 예약 오픈일 — 매달 이 날짜에 '다음 달' 전체가 열린다(기본 10일: 8/10 → 9월 오픈).
+    // 예약 가능 범위는 src/helpers.js bookingMaxDate 참고. (구 booking_window_days는
+    // 더 이상 쓰지 않지만, 기존 배포 DB 호환을 위해 값 자체는 남겨 둔다.)
+    booking_open_day: '10',
     booking_window_days: '60',
     reply_sla_text: 'Requests are usually reviewed within 2 business days (the museum is closed on Mondays).',
     staff_notify_email: 'raim@seoulraim.com',

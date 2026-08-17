@@ -558,13 +558,13 @@ router.get('/settings', requireAdmin, (req, res) => {
 // Out-of-range input keeps the current value rather than writing nonsense.
 const NUMERIC_SETTINGS = {
   max_party_size: { min: 1, max: 19 },
-  booking_window_days: { min: 1, max: 180 },
+  booking_open_day: { min: 1, max: 28 },   // 매달 이 날짜에 다음 달 예약이 열린다
   retention_days: { min: 1, max: 3650 },
   noshow_retention_days: { min: 1, max: 3650 },
   digest_hour: { min: 0, max: 23, allowEmpty: true }, // empty = digest disabled
 };
 router.post('/settings', requireAdmin, (req, res) => {
-  const keys = ['contact_email', 'contact_phone', 'address_en', 'max_party_size', 'booking_window_days', 'reply_sla_text', 'staff_notify_email', 'retention_days', 'noshow_retention_days', 'yeyak_url_permanent', 'yeyak_url_special', 'yeyak_admin_url', 'digest_hour'];
+  const keys = ['contact_email', 'contact_phone', 'address_en', 'max_party_size', 'booking_open_day', 'reply_sla_text', 'staff_notify_email', 'retention_days', 'noshow_retention_days', 'yeyak_url_permanent', 'yeyak_url_special', 'yeyak_admin_url', 'digest_hour'];
   const rejected = [];
   for (const k of keys) {
     if (req.body[k] == null) continue;

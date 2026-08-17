@@ -43,6 +43,22 @@ function addDays(dateStr, n) {
   return d.toISOString().slice(0, 10);
 }
 
+// 예약 가능한 마지막 날짜. "오늘+N일" 롤링 창이 아니라 **달력 기준**이다:
+// 매달 openDay(기본 10일)에 다음 달 전체가 열린다. 즉 오늘 날짜(일)가
+//   - openDay 미만이면 → 이번 달 말일까지만 예약 가능
+//   - openDay 이상이면 → 다음 달 말일까지 예약 가능 (예: 8/10 → 9/30)
+// 최소 날짜는 항상 오늘(todayStr)이며, 휴관·매진 판정은 이 범위 안에서 따로 적용된다.
+function bookingMaxDate(dateStr, openDay) {
+  const day = Math.min(28, Math.max(1, Number(openDay) || 10));
+  const [y, m, d] = dateStr.split('-').map(Number);
+  let ty = y, tm = m;                 // 대상 월 (1~12)
+  if (d >= day) { tm = m + 1; if (tm > 12) { tm = 1; ty = y + 1; } }
+  // 그 달의 말일: Date.UTC(ty, tm, 0) 은 (1-based) tm월의 마지막 날.
+  const lastDay = new Date(Date.UTC(ty, tm, 0)).getUTCDate();
+  const p = (n) => String(n).padStart(2, '0');
+  return `${ty}-${p(tm)}-${p(lastDay)}`;
+}
+
 // 휴관 판정. 우선순위대로:
 //   ① Admin > Schedule의 수동 등록(closures)이 항상 최우선
 //   ② 1월 1일 / 설날 당일 / 추석 당일은 공휴일이어도 휴관
@@ -252,7 +268,7 @@ const STATUS_BADGE_KO = {
 
 module.exports = {
   DATE_RE, SLA_HOURS, DEMO_EMAIL_DOMAIN, NOT_DEMO_SQL,
-  isValidDateStr, todayStr, nowHM, weekdayOf, addDays,
+  isValidDateStr, todayStr, nowHM, weekdayOf, addDays, bookingMaxDate,
   closureInfo, sessionsForDate, sessionOrdinal, slotRunsOn, genCode, getEnglishTours,
   getReservation, getReservationByCode, maskName, STATUS_BADGE, STATUS_BADGE_KO, getSettings,
 };

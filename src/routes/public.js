@@ -2,7 +2,7 @@
 const express = require('express');
 const { db } = require('../db');
 const {
-  isValidDateStr, todayStr, addDays, closureInfo, sessionsForDate, genCode,
+  isValidDateStr, todayStr, addDays, bookingMaxDate, closureInfo, sessionsForDate, genCode,
   getReservationByCode, maskName, STATUS_BADGE, getSettings, getEnglishTours,
 } = require('../helpers');
 const mailer = require('../mailer');
@@ -22,7 +22,7 @@ const reserveLimiter = rateLimit({
     res.status(429).render('reserve', {
       settings: s,
       today: todayStr(),
-      maxDate: addDays(todayStr(), Number(s.booking_window_days || 60)),
+      maxDate: bookingMaxDate(todayStr(), s.booking_open_day),
       error: 'Too many requests. Please wait a few minutes and try again.',
       form: {},
       enTours: getEnglishTours(), countries,
@@ -60,7 +60,7 @@ router.get('/reserve', (req, res) => {
   res.render('reserve', {
     settings: s,
     today: todayStr(),
-    maxDate: addDays(todayStr(), Number(s.booking_window_days || 60)),
+    maxDate: bookingMaxDate(todayStr(), s.booking_open_day),
     error: null,
     form: {},
     enTours: getEnglishTours(), countries,
@@ -71,7 +71,7 @@ router.get('/api/sessions', (req, res) => {
   const date = String(req.query.date || '');
   if (!isValidDateStr(date)) return res.status(400).json({ error: 'Invalid date' });
   const s = getSettings();
-  const max = addDays(todayStr(), Number(s.booking_window_days || 60));
+  const max = bookingMaxDate(todayStr(), s.booking_open_day);
   if (date < todayStr() || date > max) {
     return res.json({ closed: true, reason: 'Outside the booking window', sessions: [] });
   }
@@ -101,13 +101,13 @@ router.post('/reserve', reserveLimiter, async (req, res) => {
 
   const fail = (msg) => res.status(400).render('reserve', {
     settings: s, today: todayStr(),
-    maxDate: addDays(todayStr(), Number(s.booking_window_days || 60)),
+    maxDate: bookingMaxDate(todayStr(), s.booking_open_day),
     error: msg, form,
     enTours: getEnglishTours(), countries,
   });
 
   if (!isValidDateStr(form.date)) return fail('Please pick a valid date.');
-  if (form.date < todayStr() || form.date > addDays(todayStr(), Number(s.booking_window_days || 60)))
+  if (form.date < todayStr() || form.date > bookingMaxDate(todayStr(), s.booking_open_day))
     return fail('That date is outside the booking window.');
   const { closed } = closureInfo(form.date);
   if (closed) return fail('The museum is closed on that date.');
